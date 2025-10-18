@@ -23,7 +23,7 @@ class NUSModsAPI:
     """Fetches module data from NUSMods API"""
     
     BASE_URL = "https://api.nusmods.com/v2"
-    ACADEMIC_YEAR = "2025-2026"
+    ACADEMIC_YEAR = "2024-2025"
     
     @staticmethod
     def get_module_data(module_code: str) -> Dict:
