@@ -262,7 +262,7 @@ function App() {
               onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
             />
             <p style={{ fontSize: "14px", color: "#6b7280", marginTop: "8px" }}>
-              Example NUS modules for AY2024-2025
+              Example NUS modules for AY2025-2026
             </p>
           </div>
 
