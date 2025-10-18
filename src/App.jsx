@@ -9,6 +9,140 @@ import {
 } from "lucide-react";
 import "./App.css";
 
+function BlockedTimeForm({ onAdd, onCancel }) {
+  const [day, setDay] = useState('Monday');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onAdd(day, startTime, endTime);
+    // Reset form
+    setStartTime('');
+    setEndTime('');
+  };
+
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+        {/* Day Selection */}
+        <div>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+            Day
+          </label>
+          <select
+            value={day}
+            onChange={(e) => setDay(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '2px solid #e5e7eb',
+              borderRadius: '8px',
+              fontSize: '15px',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            {days.map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Start Time */}
+        <div>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+            Start Time (HHMM)
+          </label>
+          <input
+            type="text"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            placeholder="e.g., 0900"
+            maxLength="4"
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '2px solid #e5e7eb',
+              borderRadius: '8px',
+              fontSize: '15px',
+              outline: 'none'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#667eea'}
+            onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+          />
+        </div>
+
+        {/* End Time */}
+        <div>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+            End Time (HHMM)
+          </label>
+          <input
+            type="text"
+            value={endTime}
+            onChange={(e) => setEndTime(e.target.value)}
+            placeholder="e.g., 1100"
+            maxLength="4"
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '2px solid #e5e7eb',
+              borderRadius: '8px',
+              fontSize: '15px',
+              outline: 'none'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#667eea'}
+            onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+          />
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={onCancel}
+          style={{
+            padding: '10px 24px',
+            background: '#6b7280',
+            color: 'white',
+            borderRadius: '8px',
+            border: 'none',
+            fontSize: '15px',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          style={{
+            padding: '10px 24px',
+            background: '#10b981',
+            color: 'white',
+            borderRadius: '8px',
+            border: 'none',
+            fontSize: '15px',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
+        >
+          Add Blocked Time
+        </button>
+      </div>
+
+      {/* Help Text */}
+      <p style={{ fontSize: '13px', color: '#6b7280', margin: 0, textAlign: 'center' }}>
+        💡 Tip: Use 24-hour format (e.g., 0900 for 9 AM, 1430 for 2:30 PM)
+      </p>
+    </form>
+  );
+}
+
 function App() {
   // Add this useEffect to set body styles
   React.useEffect(() => {
@@ -45,15 +179,54 @@ function App() {
     lunchBreak: true,
     minimizeTravel: false,
   });
+
+  const [blockedTimes, setBlockedTimes] = useState([]);
+  const [showBlockedTimeForm, setShowBlockedTimeForm] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [timetables, setTimetables] = useState([]);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
+
+  // Helper function to add a blocked time slot
+  const addBlockedTime = (day, startTime, endTime) => {
+    // Validate input
+    if (!day || !startTime || !endTime) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    // Validate time format (should be HHMM)
+    const timeRegex = /^([0-1][0-9]|2[0-3])[0-5][0-9]$/;
+    if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+      alert('Invalid time format. Use HHMM (e.g., 0900, 1430)');
+      return;
+    }
+
+    // Validate start < end
+    if (parseInt(startTime) >= parseInt(endTime)) {
+      alert('Start time must be before end time');
+      return;
+    }
+
+    const newBlockedTime = { day, startTime, endTime };
+    setBlockedTimes([...blockedTimes, newBlockedTime]);
+  };
+
+  // Helper function to remove a blocked time slot
+  const removeBlockedTime = (index) => {
+    setBlockedTimes(blockedTimes.filter((_, i) => i !== index));
+  };
+
+  // Format time for display (0900 -> 09:00)
+  const formatTimeDisplay = (time) => {
+    return `${time.slice(0, 2)}:${time.slice(2, 4)}`;
+  };
 
   // Function to call your backend API
-  const optimizeTimetable = async () => {
-    setLoading(true);
-    setError("");
-    setTimetables([]);
+const optimizeTimetable = async () => {
+  setLoading(true);
+  setError('');
+  setTimetables([]);
 
     try {
       // Parse modules
@@ -66,20 +239,30 @@ function App() {
         throw new Error("Please enter at least one module code");
       }
 
+    // Include blocked times in preferences
+    const requestBody = { 
+      modules: moduleList, 
+      preferences: {
+        ...preferences,
+        blockedTimes: blockedTimes  // Include blocked times
+      }
+    };
+
       console.log("Sending request to backend:", {
         modules: moduleList,
         preferences,
       });
 
-      // Call the Python backend API
-      const response = await fetch("http://localhost:5000/api/optimize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ modules: moduleList, preferences }),
-      });
+    // Call the Python backend API
+    const response = await fetch('http://localhost:5001/api/optimize', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ modules: moduleList, preferences }),
+    });
+
 
       console.log("Response status:", response.status);
 
@@ -329,6 +512,95 @@ function App() {
                 </span>
               </label>
             ))}
+          </div>
+
+          <div style={{ marginTop: '40px', marginBottom: '30px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', margin: 0 }}>
+                🚫 Block Time Slots
+              </h3>
+              <button
+                onClick={() => setShowBlockedTimeForm(!showBlockedTimeForm)}
+                style={{
+                  padding: '10px 20px',
+                  background: showBlockedTimeForm ? '#ef4444' : '#10b981',
+                  color: 'white',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {showBlockedTimeForm ? '✕ Cancel' : '+ Add Blocked Time'}
+              </button>
+            </div>
+
+            {/* Add Blocked Time Form */}
+            {showBlockedTimeForm && (
+              <div style={{
+                background: '#f9fafb',
+                padding: '24px',
+                borderRadius: '12px',
+                border: '2px dashed #d1d5db',
+                marginBottom: '20px'
+              }}>
+                <BlockedTimeForm onAdd={addBlockedTime} onCancel={() => setShowBlockedTimeForm(false)} />
+              </div>
+            )}
+
+            {/* Display Current Blocked Times */}
+            {blockedTimes.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {blockedTimes.map((blocked, index) => (
+                  <div key={index} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px 20px',
+                    background: '#fef2f2',
+                    border: '2px solid #fecaca',
+                    borderRadius: '10px',
+                    transition: 'all 0.2s'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <AlertCircle size={20} color="#dc2626" />
+                      <span style={{ fontSize: '16px', fontWeight: '600', color: '#991b1b' }}>
+                        {blocked.day}
+                      </span>
+                      <span style={{ fontSize: '15px', color: '#7f1d1d' }}>
+                        {formatTimeDisplay(blocked.startTime)} - {formatTimeDisplay(blocked.endTime)}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => removeBlockedTime(index)}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#dc2626',
+                        color: 'white',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#b91c1c'}
+                      onMouseOut={(e) => e.currentTarget.style.background = '#dc2626'}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {blockedTimes.length === 0 && (
+              <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center', fontStyle: 'italic' }}>
+                No blocked time slots. Add times when you're unavailable (e.g., club meetings, part-time work).
+              </p>
+            )}
           </div>
 
           <button
