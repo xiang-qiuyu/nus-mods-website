@@ -9,25 +9,157 @@ import {
 } from "lucide-react";
 import "./App.css";
 
+// 🆕 Enhanced BlockedTimeForm Component
 function BlockedTimeForm({ onAdd, onCancel }) {
   const [day, setDay] = useState('Monday');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [applyToAllDays, setApplyToAllDays] = useState(false); // 🆕 Add this state
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onAdd(day, startTime, endTime);
+    
+    // 🆕 If "Apply to all weekdays" is checked, add to all weekdays
+    if (applyToAllDays) {
+      const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+      weekdays.forEach(weekday => {
+        onAdd(weekday, startTime, endTime);
+      });
+    } else {
+      // Add to selected day only
+      onAdd(day, startTime, endTime);
+    }
+    
     // Reset form
     setStartTime('');
     setEndTime('');
+    setApplyToAllDays(false);
+  };
+
+  // 🆕 Quick preset buttons
+  const applyPreset = (start, end) => {
+    setStartTime(start);
+    setEndTime(end);
   };
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      
+      {/* 🆕 Quick Presets Section */}
+      <div>
+        <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '10px' }}>
+          ⚡ Quick Presets
+        </label>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => applyPreset('1200', '1300')}
+            style={{
+              padding: '8px 16px',
+              background: '#f3f4f6',
+              color: '#374151',
+              border: '2px solid #e5e7eb',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#e5e7eb';
+              e.currentTarget.style.borderColor = '#667eea';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#f3f4f6';
+              e.currentTarget.style.borderColor = '#e5e7eb';
+            }}
+          >
+            🍱 Lunch (12-1pm)
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset('1800', '2000')}
+            style={{
+              padding: '8px 16px',
+              background: '#f3f4f6',
+              color: '#374151',
+              border: '2px solid #e5e7eb',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#e5e7eb';
+              e.currentTarget.style.borderColor = '#667eea';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#f3f4f6';
+              e.currentTarget.style.borderColor = '#e5e7eb';
+            }}
+          >
+            🌙 Evening (6-8pm)
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset('0900', '1700')}
+            style={{
+              padding: '8px 16px',
+              background: '#f3f4f6',
+              color: '#374151',
+              border: '2px solid #e5e7eb',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#e5e7eb';
+              e.currentTarget.style.borderColor = '#667eea';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#f3f4f6';
+              e.currentTarget.style.borderColor = '#e5e7eb';
+            }}
+          >
+            💼 Work Hours (9am-5pm)
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset('0800', '2200')}
+            style={{
+              padding: '8px 16px',
+              background: '#f3f4f6',
+              color: '#374151',
+              border: '2px solid #e5e7eb',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#e5e7eb';
+              e.currentTarget.style.borderColor = '#667eea';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#f3f4f6';
+              e.currentTarget.style.borderColor = '#e5e7eb';
+            }}
+          >
+            📅 Full Day
+          </button>
+        </div>
+      </div>
+
+      {/* Time Input Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-        {/* Day Selection */}
+        
+        {/* Day Selection - 🆕 Disabled when "Apply to all weekdays" is checked */}
         <div>
           <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
             Day
@@ -35,6 +167,7 @@ function BlockedTimeForm({ onAdd, onCancel }) {
           <select
             value={day}
             onChange={(e) => setDay(e.target.value)}
+            disabled={applyToAllDays} // 🆕 Disable when applying to all days
             style={{
               width: '100%',
               padding: '12px',
@@ -42,7 +175,9 @@ function BlockedTimeForm({ onAdd, onCancel }) {
               borderRadius: '8px',
               fontSize: '15px',
               outline: 'none',
-              cursor: 'pointer'
+              cursor: applyToAllDays ? 'not-allowed' : 'pointer',
+              opacity: applyToAllDays ? 0.5 : 1, // 🆕 Visual feedback
+              background: applyToAllDays ? '#f9fafb' : 'white'
             }}
           >
             {days.map(d => (
@@ -51,7 +186,7 @@ function BlockedTimeForm({ onAdd, onCancel }) {
           </select>
         </div>
 
-        {/* Start Time */}
+        {/* Start Time - 🆕 Enhanced with validation feedback */}
         <div>
           <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
             Start Time (HHMM)
@@ -59,9 +194,14 @@ function BlockedTimeForm({ onAdd, onCancel }) {
           <input
             type="text"
             value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
+            onChange={(e) => {
+              // 🆕 Only allow numbers
+              const value = e.target.value.replace(/\D/g, '');
+              setStartTime(value);
+            }}
             placeholder="e.g., 0900"
             maxLength="4"
+            required
             style={{
               width: '100%',
               padding: '12px',
@@ -75,7 +215,7 @@ function BlockedTimeForm({ onAdd, onCancel }) {
           />
         </div>
 
-        {/* End Time */}
+        {/* End Time - 🆕 Enhanced with validation feedback */}
         <div>
           <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
             End Time (HHMM)
@@ -83,9 +223,14 @@ function BlockedTimeForm({ onAdd, onCancel }) {
           <input
             type="text"
             value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
+            onChange={(e) => {
+              // 🆕 Only allow numbers
+              const value = e.target.value.replace(/\D/g, '');
+              setEndTime(value);
+            }}
             placeholder="e.g., 1100"
             maxLength="4"
+            required
             style={{
               width: '100%',
               padding: '12px',
@@ -100,35 +245,99 @@ function BlockedTimeForm({ onAdd, onCancel }) {
         </div>
       </div>
 
+      {/* 🆕 Apply to All Weekdays Checkbox - ADD THIS HERE */}
+      <label style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px', 
+        cursor: 'pointer',
+        padding: '14px',
+        background: applyToAllDays ? '#ede9fe' : '#f9fafb',
+        borderRadius: '10px',
+        border: applyToAllDays ? '2px solid #a78bfa' : '2px solid #e5e7eb',
+        transition: 'all 0.2s'
+      }}>
+        <input
+          type="checkbox"
+          checked={applyToAllDays}
+          onChange={(e) => setApplyToAllDays(e.target.checked)}
+          style={{ 
+            width: '20px', 
+            height: '20px', 
+            cursor: 'pointer', 
+            accentColor: '#667eea' 
+          }}
+        />
+        <div style={{ flex: 1 }}>
+          <span style={{ color: '#374151', fontSize: '15px', fontWeight: '600', display: 'block' }}>
+            📆 Apply to all weekdays (Mon-Fri)
+          </span>
+          <span style={{ color: '#6b7280', fontSize: '13px' }}>
+            Block this time slot across Monday to Friday
+          </span>
+        </div>
+      </label>
+
+      {/* 🆕 Visual Preview of what will be added */}
+      {(startTime.length === 4 && endTime.length === 4) && (
+        <div style={{
+          padding: '12px 16px',
+          background: '#f0fdf4',
+          border: '1px solid #bbf7d0',
+          borderRadius: '8px',
+          fontSize: '14px',
+          color: '#166534'
+        }}>
+          <strong>Preview:</strong> Will block{' '}
+          {applyToAllDays ? 'Monday-Friday' : day}{' '}
+          from {startTime.slice(0, 2)}:{startTime.slice(2, 4)} to {endTime.slice(0, 2)}:{endTime.slice(2, 4)}
+        </div>
+      )}
+
       {/* Action Buttons */}
       <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
         <button
           type="button"
           onClick={onCancel}
           style={{
-            padding: '10px 24px',
+            padding: '12px 24px',
             background: '#6b7280',
             color: 'white',
             borderRadius: '8px',
             border: 'none',
             fontSize: '15px',
             fontWeight: '600',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            transition: 'all 0.2s'
           }}
+          onMouseOver={(e) => e.currentTarget.style.background = '#4b5563'}
+          onMouseOut={(e) => e.currentTarget.style.background = '#6b7280'}
         >
           Cancel
         </button>
         <button
           type="submit"
+          disabled={startTime.length !== 4 || endTime.length !== 4} // 🆕 Disable if invalid
           style={{
-            padding: '10px 24px',
-            background: '#10b981',
+            padding: '12px 24px',
+            background: (startTime.length === 4 && endTime.length === 4) ? '#10b981' : '#9ca3af',
             color: 'white',
             borderRadius: '8px',
             border: 'none',
             fontSize: '15px',
             fontWeight: '600',
-            cursor: 'pointer'
+            cursor: (startTime.length === 4 && endTime.length === 4) ? 'pointer' : 'not-allowed',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => {
+            if (startTime.length === 4 && endTime.length === 4) {
+              e.currentTarget.style.background = '#059669';
+            }
+          }}
+          onMouseOut={(e) => {
+            if (startTime.length === 4 && endTime.length === 4) {
+              e.currentTarget.style.background = '#10b981';
+            }
           }}
         >
           Add Blocked Time
@@ -142,6 +351,7 @@ function BlockedTimeForm({ onAdd, onCancel }) {
     </form>
   );
 }
+
 
 function App() {
   // Add this useEffect to set body styles
