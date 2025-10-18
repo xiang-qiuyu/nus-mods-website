@@ -279,12 +279,17 @@ class TimetableOptimizer:
         solutions = []
         
         class SolutionCollector(cp_model.CpSolverSolutionCallback):
-            def __init__(self, variables):
+            def __init__(self, variables, limit=5):
                 cp_model.CpSolverSolutionCallback.__init__(self)
                 self._variables = variables
+                self._solution_limit = limit
                 self.solutions = []
             
             def on_solution_callback(self):
+                if len(self.solutions) >= self._solution_limit:
+                    self.StopSearch()
+                    return
+                
                 solution = {}
                 for module, types in self._variables.items():
                     solution[module] = {}
@@ -295,7 +300,7 @@ class TimetableOptimizer:
                                 break
                 self.solutions.append(solution)
         
-        solution_collector = SolutionCollector(class_vars)
+        solution_collector = SolutionCollector(class_vars, limit=5)
         status = solver.Solve(model, solution_collector)
         
         if status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
