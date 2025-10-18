@@ -260,7 +260,7 @@ const optimizeTimetable = async () => {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify({ modules: moduleList, preferences }),
+      body: JSON.stringify(requestBody),
     });
 
 

@@ -246,7 +246,7 @@ class TimetableOptimizer:
         # Constraint: No overlapping classes
         self._add_no_overlap_constraints(model, all_selected_lessons)
         
-         # 🆕 NEW: Constraint: Block user-specified time slots (HARD CONSTRAINT)
+        # Constraint: Block user-specified time slots (HARD CONSTRAINT)
         self._add_blocked_time_constraints(model, all_selected_lessons)
 
         # Soft constraints (preferences)
@@ -306,12 +306,6 @@ class TimetableOptimizer:
     
     def _add_no_overlap_constraints(self, model, all_selected_lessons):
         """Ensure no two lesson sessions overlap"""
-        all_classes = []
-        for module in all_selected_lessons:
-            for lesson_type in all_selected_lessons[module]:
-                for class_id, (var, lesson) in all_selected_lessons[module][lesson_type].items():
-                    all_classes.append((var, lesson))
-
         for i in range(len(all_selected_lessons)):
             for j in range(i + 1, len(all_selected_lessons)):
                 var1, session1, _, _, _ = all_selected_lessons[i]
@@ -351,10 +345,10 @@ class TimetableOptimizer:
     
         return True                
     
-    def _add_blocked_time_constraints(self, model, class_vars):
+    def _add_blocked_time_constraints(self, model, all_selected_lessons):
         """
         Hard constraint: Prevent classes from being scheduled during blocked time slots.
-    
+
         Expected format in preferences:
         'blockedTimes': [
             {'day': 'Monday', 'startTime': '1400', 'endTime': '1600'},
@@ -366,87 +360,23 @@ class TimetableOptimizer:
 
         if not blocked_times:
             return  # No blocked times specified
-    
-        print(f"Processing {len(blocked_times)} blocked time slot(s)...")
-    
-        blocked_count = 0
-        for module in class_vars:
-            for lesson_type in class_vars[module]:
-                for class_id, (var, lesson) in class_vars[module][lesson_type].items():
-                    all_classes.append((var, lesson))
-        
-        for i in range(len(all_classes)):
-            for j in range(i + 1, len(all_classes)):
-                var1, lesson1 = all_classes[i]
-                var2, lesson2 = all_classes[j]
-                
-                if self._lessons_overlap(session1, session2):
-                    # If both classes are selected, sessions overlap - not allowed
-                    model.Add(var1 + var2 <= 1)
-    
-    def _validate_blocked_times(self, blocked_times: List[Dict]) -> bool:
-        """Validate blocked times format"""
-        valid_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    
-        for blocked in blocked_times:
-            # Check required fields
-            if 'day' not in blocked or 'startTime' not in blocked or 'endTime' not in blocked:
-                print(f"Invalid blocked time (missing fields): {blocked}")
-                return False
-        
-            # Check valid day
-            if blocked['day'] not in valid_days:
-                print(f"Invalid day: {blocked['day']}")
-                return False
-        
-            # Check time format (should be 4 digits)
-            try:
-                start = int(blocked['startTime'])
-                end = int(blocked['endTime'])
-                if not (0 <= start <= 2359 and 0 <= end <= 2359):
-                    raise ValueError
-                if start >= end:
-                    print(f"Start time must be before end time: {blocked}")
-                    return False
-            except (ValueError, TypeError):
-                print(f"Invalid time format: {blocked}")
-                return False
-    
-        return True                
-    
-    def _add_blocked_time_constraints(self, model, class_vars):
-        """
-        Hard constraint: Prevent classes from being scheduled during blocked time slots.
-    
-        Expected format in preferences:
-        'blockedTimes': [
-            {'day': 'Monday', 'startTime': '1400', 'endTime': '1600'},
-            {'day': 'Wednesday', 'startTime': '0900', 'endTime': '1000'},
-            ...
-        ]
-        """
-        blocked_times = self.preferences.get('blockedTimes', [])
 
-        if not blocked_times:
-            return  # No blocked times specified
-    
         print(f"Processing {len(blocked_times)} blocked time slot(s)...")
-    
+
         blocked_count = 0
-        for module in class_vars:
-            for lesson_type in class_vars[module]:
-                for class_id, (var, lesson) in class_vars[module][lesson_type].items():
-                    # Check if this lesson conflicts with any blocked time
-                    for blocked in blocked_times:
-                        if self._lesson_conflicts_with_blocked_time(lesson, blocked):
-                            # This class cannot be selected (set to 0)
-                            model.Add(var == 0)
-                            blocked_count += 1
-                            print(f"  ✗ Blocked: {module} {lesson_type} [{class_id}] on {lesson['day']} "
-                                  f"{lesson['startTime']}-{lesson['endTime']} (conflicts with blocked time)")
-                            break  # No need to check other blocked times for this lesson
-    
-        print(f"Total classes blocked: {blocked_count}")
+        # all_selected_lessons is a list of (var, session, module, lesson_type, class_no)
+        for var, session, module, lesson_type, class_no in all_selected_lessons:
+            # Check if this session conflicts with any blocked time
+            for blocked in blocked_times:
+                if self._lesson_conflicts_with_blocked_time(session, blocked):
+                    # This class cannot be selected (set to 0)
+                    model.Add(var == 0)
+                    blocked_count += 1
+                    print(f"  ✗ Blocked: {module} {lesson_type} [{class_no}] on {session['day']} "
+                        f"{session['startTime']}-{session['endTime']} (conflicts with blocked time)")
+                    break  # No need to check other blocked times for this session
+
+        print(f"Total sessions blocked: {blocked_count}")
 
     def _lesson_conflicts_with_blocked_time(self, lesson: Dict, blocked: Dict) -> bool:
         """Check if a lesson conflicts with a blocked time slot"""
@@ -560,7 +490,8 @@ class TimetableOptimizer:
                             'day': session['day'],
                             'startTime': session['startTime'],
                             'endTime': session['endTime'],
-                            'venue': session['venue']
+                            'venue': session['venue'],
+                            'weeks': session.get('weeks')
                         })
             
             # Sort by day and time
@@ -650,9 +581,7 @@ def health_check():
 
 @app.route('/api/optimize', methods=['POST'])
 def optimize_timetable():
-    """Main optimization endpoint"""
-    """
-    Main optimization endpoint
+    """Main optimization endpoint
     
     Expected JSON body:
     {
