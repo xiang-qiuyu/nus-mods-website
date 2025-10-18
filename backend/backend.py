@@ -3,6 +3,8 @@ Flask Backend API for NUSMods Timetable Optimizer
 Run with: python backend.py
 """
 
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
@@ -21,7 +23,7 @@ class NUSModsAPI:
     """Fetches module data from NUSMods API"""
     
     BASE_URL = "https://api.nusmods.com/v2"
-    ACADEMIC_YEAR = "2024-2025"
+    ACADEMIC_YEAR = "2025-2026"
     
     @staticmethod
     def get_module_data(module_code: str) -> Dict:
@@ -61,7 +63,7 @@ class NUSModsAPI:
                 'startTime': lesson['startTime'],
                 'endTime': lesson['endTime'],
                 'venue': lesson['venue'],
-                'weeks': lesson.get('weeks', [])
+                'weeks': lesson.get('weeks')
             })
         
         return dict(lessons_by_type)
@@ -91,6 +93,98 @@ class TimetableOptimizer:
                 print(f"✓ Loaded {module_code}: {data.get('title', 'Unknown')}")
             else:
                 print(f"✗ Failed to load {module_code}")
+    
+    def _get_exam_interval_for_module(self, module_code: str) -> Optional[Tuple[datetime, datetime]]:
+        """
+        Parse exam start datetime and compute exam end datetime for a module (if available).
+        Returns (start_dt, end_dt) or None if no valid exam info.
+        """
+        data = self.module_data.get(module_code)
+        if not data:
+            data = NUSModsAPI.get_module_data(module_code)
+            if data:
+                self.module_data[module_code] = data
+            else:
+                print(f"  No data found for {module_code}")
+                return None
+
+        sem_data = data.get('semesterData', [])
+        print(f"  {module_code}: Found {len(sem_data)} semester(s)")
+        
+        # Check ALL semesters, not just semester 1
+        for s in sem_data:
+            exam_date = s.get('examDate')
+            exam_duration = s.get('examDuration')
+            semester = s.get('semester')
+            print(f"    Sem {semester}: examDate={exam_date}, duration={exam_duration}")
+            
+            if exam_date and exam_duration:
+                try:
+                    start_dt = datetime.fromisoformat(exam_date)
+                except Exception:
+                    try:
+                        start_dt = datetime.fromisoformat(exam_date.replace('Z', '+00:00'))
+                    except Exception:
+                        print(f"    Failed to parse exam date: {exam_date}")
+                        continue
+                try:
+                    duration_min = int(exam_duration)
+                except Exception:
+                    duration_min = 120
+                end_dt = start_dt + timedelta(minutes=duration_min)
+                print(f"    ✓ {module_code} exam: {start_dt} to {end_dt}")
+                return (start_dt, end_dt)
+        
+        print(f"    No valid exam info for {module_code}")
+        return None
+
+    def find_exam_clashes(self, module_codes: List[str]) -> List[Dict]:
+        """
+        Returns list of exam clash groups:
+        { 'modules': [..], 'overlap_start': ISO, 'overlap_end': ISO }
+        """
+        print(f"Checking exam clashes for: {module_codes}")
+        intervals = []
+        for mod in module_codes:
+            interval = self._get_exam_interval_for_module(mod)
+            if interval is not None:
+                intervals.append({'module': mod, 'start': interval[0], 'end': interval[1]})
+
+        print(f"Found {len(intervals)} modules with exam times")
+        if len(intervals) < 2:
+            print("Not enough modules with exam times to check for clashes")
+            return []
+
+        intervals.sort(key=lambda x: x['start'])
+
+        groups: List[List[Dict]] = []
+        current_group = [intervals[0]]
+        current_end = intervals[0]['end']
+
+        for it in intervals[1:]:
+            if it['start'] < current_end:
+                current_group.append(it)
+                if it['end'] > current_end:
+                    current_end = it['end']
+            else:
+                if len(current_group) > 1:
+                    groups.append(current_group)
+                current_group = [it]
+                current_end = it['end']
+
+        if len(current_group) > 1:
+            groups.append(current_group)
+
+        result = []
+        for g in groups:
+            overlap_start = min(item['start'] for item in g)
+            overlap_end = max(item['end'] for item in g)
+            result.append({
+                'modules': [item['module'] for item in g],
+                'overlap_start': overlap_start.isoformat(),
+                'overlap_end': overlap_end.isoformat(),
+            })
+        return result
     
     @staticmethod
     def time_to_slot(time_str: str) -> int:
@@ -180,21 +274,17 @@ class TimetableOptimizer:
         # Solve and collect multiple solutions
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = 30.0
+        solver.parameters.enumerate_all_solutions = True  # Key: enumerate all solutions
         
         solutions = []
         
         class SolutionCollector(cp_model.CpSolverSolutionCallback):
-            def __init__(self, variables, limit):
+            def __init__(self, variables):
                 cp_model.CpSolverSolutionCallback.__init__(self)
                 self._variables = variables
-                self._solution_limit = limit
                 self.solutions = []
             
             def on_solution_callback(self):
-                if len(self.solutions) >= self._solution_limit:
-                    self.StopSearch()
-                    return
-                
                 solution = {}
                 for module, types in self._variables.items():
                     solution[module] = {}
@@ -205,7 +295,7 @@ class TimetableOptimizer:
                                 break
                 self.solutions.append(solution)
         
-        solution_collector = SolutionCollector(class_vars, limit=5)
+        solution_collector = SolutionCollector(class_vars)
         status = solver.Solve(model, solution_collector)
         
         if status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
@@ -233,16 +323,39 @@ class TimetableOptimizer:
                     model.Add(var1 + var2 <= 1)
     
     def _lessons_overlap(self, lesson1: Dict, lesson2: Dict) -> bool:
-        """Check if two lessons overlap"""
-        if lesson1['day'] != lesson2['day']:
+        """Check if two lessons overlap in time and weeks (if weeks info exists)."""
+
+        # Different day => no overlap
+        if lesson1.get('day') != lesson2.get('day'):
             return False
-        
+
         start1 = self.time_to_slot(lesson1['startTime'])
         end1 = self.time_to_slot(lesson1['endTime'])
         start2 = self.time_to_slot(lesson2['startTime'])
         end2 = self.time_to_slot(lesson2['endTime'])
-        
-        return not (end1 <= start2 or end2 <= start1)
+
+        time_overlap = not (end1 <= start2 or end2 <= start1)
+        if not time_overlap:
+            return False
+
+        # If both lessons include explicit weeks info, check week intersection.
+        weeks1 = lesson1.get('weeks')  # expected to be a list like [1,2,3] if parse provides it
+        weeks2 = lesson2.get('weeks')
+
+        if weeks1 is None or weeks2 is None:
+            # Fallback behavior: no weeks info — treat as overlapping based on time only.
+            # If you prefer conservative behavior (treat unknown weeks as conflict), change to `return True` here.
+            return True
+
+        try:
+            set1 = set(int(w) for w in weeks1)
+            set2 = set(int(w) for w in weeks2)
+        except Exception:
+            # If parsing fails, be conservative and treat as overlapping
+            return True
+
+        # Return true only if weeks intersect
+        return len(set1.intersection(set2)) > 0
     
     def _add_no_morning_classes(self, model, class_vars):
         """Penalize classes before 10am"""
@@ -410,7 +523,8 @@ class TimetableOptimizer:
                         'day': lesson_data['day'],
                         'startTime': lesson_data['startTime'],
                         'endTime': lesson_data['endTime'],
-                        'venue': lesson_data['venue']
+                        'venue': lesson_data['venue'],
+                        'weeks': lesson_data.get('weeks')
                     })
             
             # Sort by day and time
@@ -618,34 +732,48 @@ def optimize_timetable():
         data = request.json
         modules = data.get('modules', [])
         preferences = data.get('preferences', {})
-        
+
         print(f"\n{'='*60}")
         print(f"Received optimization request:")
         print(f"Modules: {modules}")
         print(f"Preferences: {preferences}")
         print(f"{'='*60}\n")
-        
+
         if not modules:
             return jsonify({'error': 'No modules provided'}), 400
-        
-        # Run optimization
+
         optimizer = TimetableOptimizer(modules, preferences)
-        timetables = optimizer.optimize()
+        # Ensure module_data and lessons_by_module are populated for exam checking
+        optimizer.fetch_module_data()
+
+        exam_clashes = optimizer.find_exam_clashes(modules)
+        print(f"Exam clash detection result: {len(exam_clashes)} clashes found")
         
+        # Always block if exam clashes are detected (minimal change: remove preference check)
+        if exam_clashes:
+            return jsonify({
+                'error': 'Exam clashes detected between your selected modules',
+                'examClashes': exam_clashes,
+                'count': len(exam_clashes),
+            }), 409
+
+        timetables = optimizer.optimize()
+
         if not timetables:
             return jsonify({
                 'error': 'No feasible timetables found. This might be due to:\n'
                          '- Module codes not available for current semester\n'
                          '- Too many conflicting constraints\n'
-                         '- Invalid module codes'
+                         '- Invalid module codes',
+                'examClashes': exam_clashes,
             }), 404
-        
+
         return jsonify({
             'success': True,
             'timetables': timetables,
-            'count': len(timetables)
+            'count': len(timetables),
+            'examClashes': exam_clashes,
         })
-        
     except Exception as e:
         print(f"Error during optimization: {str(e)}")
         traceback.print_exc()
