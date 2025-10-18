@@ -118,6 +118,11 @@ class TimetableOptimizer:
         for module, lessons in self.lessons_by_module.items():
             if not lessons:
                 print(f"Warning: {module} has no lessons available")
+        # Validate blocked times if provided
+        blocked_times = self.preferences.get('blockedTimes', [])
+        if blocked_times and not self._validate_blocked_times(blocked_times):
+            print("Warning: Invalid blocked times format, ignoring...")
+            self.preferences['blockedTimes'] = []
         
         model = cp_model.CpModel()
         
@@ -145,6 +150,9 @@ class TimetableOptimizer:
         # Constraint: No overlapping classes
         self._add_no_overlap_constraints(model, class_vars)
         
+         # 🆕 NEW: Constraint: Block user-specified time slots (HARD CONSTRAINT)
+        self._add_blocked_time_constraints(model, class_vars)
+
         # Soft constraints (preferences) as objectives
         objective_terms = []
         
@@ -232,6 +240,87 @@ class TimetableOptimizer:
                     # If both are selected, they overlap - not allowed
                     model.Add(var1 + var2 <= 1)
     
+    def _validate_blocked_times(self, blocked_times: List[Dict]) -> bool:
+        """Validate blocked times format"""
+        valid_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    
+        for blocked in blocked_times:
+            # Check required fields
+            if 'day' not in blocked or 'startTime' not in blocked or 'endTime' not in blocked:
+                print(f"Invalid blocked time (missing fields): {blocked}")
+                return False
+        
+            # Check valid day
+            if blocked['day'] not in valid_days:
+                print(f"Invalid day: {blocked['day']}")
+                return False
+        
+            # Check time format (should be 4 digits)
+            try:
+                start = int(blocked['startTime'])
+                end = int(blocked['endTime'])
+                if not (0 <= start <= 2359 and 0 <= end <= 2359):
+                    raise ValueError
+                if start >= end:
+                    print(f"Start time must be before end time: {blocked}")
+                    return False
+            except (ValueError, TypeError):
+                print(f"Invalid time format: {blocked}")
+                return False
+    
+        return True                
+    
+    def _add_blocked_time_constraints(self, model, class_vars):
+        """
+        Hard constraint: Prevent classes from being scheduled during blocked time slots.
+    
+        Expected format in preferences:
+        'blockedTimes': [
+            {'day': 'Monday', 'startTime': '1400', 'endTime': '1600'},
+            {'day': 'Wednesday', 'startTime': '0900', 'endTime': '1000'},
+            ...
+        ]
+        """
+        blocked_times = self.preferences.get('blockedTimes', [])
+
+        if not blocked_times:
+            return  # No blocked times specified
+    
+        print(f"Processing {len(blocked_times)} blocked time slot(s)...")
+    
+        blocked_count = 0
+        for module in class_vars:
+            for lesson_type in class_vars[module]:
+                for class_id, (var, lesson) in class_vars[module][lesson_type].items():
+                    # Check if this lesson conflicts with any blocked time
+                    for blocked in blocked_times:
+                        if self._lesson_conflicts_with_blocked_time(lesson, blocked):
+                            # This class cannot be selected (set to 0)
+                            model.Add(var == 0)
+                            blocked_count += 1
+                            print(f"  ✗ Blocked: {module} {lesson_type} [{class_id}] on {lesson['day']} "
+                                  f"{lesson['startTime']}-{lesson['endTime']} (conflicts with blocked time)")
+                            break  # No need to check other blocked times for this lesson
+    
+        print(f"Total classes blocked: {blocked_count}")
+
+    def _lesson_conflicts_with_blocked_time(self, lesson: Dict, blocked: Dict) -> bool:
+        """Check if a lesson conflicts with a blocked time slot"""
+        # Must be on the same day
+        if lesson['day'] != blocked['day']:
+            return False
+    
+        # Convert times to slots
+        lesson_start = self.time_to_slot(lesson['startTime'])
+        lesson_end = self.time_to_slot(lesson['endTime'])
+        blocked_start = self.time_to_slot(blocked['startTime'])
+        blocked_end = self.time_to_slot(blocked['endTime'])
+    
+        # Check if they overlap
+        # Two intervals overlap if: NOT (one ends before other starts)
+        return not (lesson_end <= blocked_start or blocked_end <= lesson_start)
+    
+
     def _lessons_overlap(self, lesson1: Dict, lesson2: Dict) -> bool:
         """Check if two lessons overlap"""
         if lesson1['day'] != lesson2['day']:
@@ -614,6 +703,26 @@ def health_check():
 @app.route('/api/optimize', methods=['POST'])
 def optimize_timetable():
     """Main optimization endpoint"""
+    """
+    Main optimization endpoint
+    
+    Expected JSON body:
+    {
+        "modules": ["CS1010", "MA1521"],
+        "preferences": {
+            "noMorningClasses": true,
+            "freeFridays": true,
+            "lunchBreak": true,
+            "minimizeTravel": false,
+            "compactSchedule": true,
+            "blockedTimes": [
+                {"day": "Monday", "startTime": "1400", "endTime": "1600"},
+                {"day": "Wednesday", "startTime": "0900", "endTime": "1000"}
+            ]
+        }
+    }
+    """
+    
     try:
         data = request.json
         modules = data.get('modules', [])
@@ -676,11 +785,11 @@ if __name__ == '__main__':
     print("\n" + "="*60)
     print("🚀 NUSMods Timetable Optimizer Backend")
     print("="*60)
-    print("Server starting on http://localhost:5000")
+    print("Server starting on http://localhost:5001")
     print("API Endpoints:")
     print("  - GET  /api/health")
     print("  - POST /api/optimize")
     print("  - GET  /api/modules/<module_code>")
     print("="*60 + "\n")
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)
