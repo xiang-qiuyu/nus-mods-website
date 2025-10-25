@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import "./App.css";
 
+
+
 // 🆕 Enhanced BlockedTimeForm Component
 function BlockedTimeForm({ onAdd, onCancel }) {
   const [day, setDay] = useState('Monday');
@@ -504,57 +506,44 @@ const optimizeTimetable = async () => {
   };
 
     // 🆕 Function to call ChatGPT API
-    const optimizeWithChatGPT = async () => {
-      setLoading(true);
-      setError('');
-      setChatgptResponse('');
-      setTimetables([]);
+const optimizeWithChatGPT = async () => {
+  setLoading(true);
+  setError('');
+  setChatgptResponse('');
+  setShowChatGPTResponse(false);
 
-      try {
-        const moduleList = modules
-          .split(',')
-          .map((m) => m.trim().toUpperCase())
-          .filter((m) => m);
+  try {
+    const moduleList = modules
+      .split(',')
+      .map((m) => m.trim().toUpperCase())
+      .filter((m) => m);
 
-        if (moduleList.length === 0) {
-          throw new Error('Please enter at least one module code');
-        }
+    if (moduleList.length === 0) throw new Error('Please enter at least one module code');
 
-        const requestBody = {
-          modules: moduleList,
-          preferences: preferences,
-          blockedTimes: blockedTimes,
-          userNotes: userNotes
-        };
+    const response = await fetch('http://localhost:5001/api/optimize-chatgpt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        modules: moduleList,
+        message: userNotes, // ✅ this stays as “message”
+      }),
+    });
 
-        console.log('Sending ChatGPT request:', requestBody);
+    const data = await response.json();
 
-        const response = await fetch('http://localhost:5001/api/optimize-chatgpt', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(requestBody),
-        });
+    if (!response.ok) throw new Error(data.error || 'Failed to get ChatGPT result');
 
-        const data = await response.json();
+    setChatgptResponse(data.response);  // ✅ show readable text again
+    setShowChatGPTResponse(true);
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to generate timetable with ChatGPT');
-        }
+  } catch (err) {
+    console.error(err);
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
-        setChatgptResponse(data.response);
-        setShowChatGPTResponse(true);
-        console.log('ChatGPT response received');
-
-      } catch (err) {
-        setError(err.message);
-        console.error('ChatGPT optimization error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
 
   // Update the main optimize function to handle both modes
   const handleOptimize = () => {

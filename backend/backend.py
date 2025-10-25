@@ -12,6 +12,22 @@ from ortools.sat.python import cp_model
 from typing import List, Dict, Tuple
 from collections import defaultdict
 import traceback
+import json
+
+# ==================== LLM Setup (OpenAI) ====================
+import os
+from openai import OpenAI
+
+try:
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    LLM_AVAILABLE = True
+    openai_client = client
+    print("✓ OpenAI client initialized successfully")
+except Exception as e:
+    LLM_AVAILABLE = False
+    openai_client = None
+    print(f"⚠ LLM setup failed: {e}")
+
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
@@ -1140,46 +1156,65 @@ def get_module_info(module_code):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/chat-optimize', methods=['POST'])
+# ==================== LLM Chat Optimization Endpoint ====================
+
+@app.route('/api/optimize-chatgpt', methods=['POST'])
 def chat_optimize():
     """
-    LLM chat-based optimization endpoint using OpenAI GPT
-    
-    Expected JSON body:
+    ChatGPT-based conversational optimization.
+    Expected JSON:
     {
-        "modules": ["NST2046", "ST3131", "BT3102", "QF3101", "NHS2099", "IS4226"],
-        "message": "I want to minimize travel and squeeze everything into one day"
+        "modules": ["ST3131", "QF3101", ...],
+        "message": "I want to minimize travel and compact my schedule"
     }
     """
     try:
-        data = request.json
+        data = request.json or {}
         modules = data.get('modules', [])
         user_message = data.get('message', '')
-        
-        print(f"\n{'='*60}")
-        print(f"🤖 LLM Chat Optimization Request (OpenAI):")
-        print(f"Modules: {modules}")
-        print(f"Message: {user_message}")
-        print(f"{'='*60}\n")
-        
+
+        print(f"\n🤖 ChatGPT optimization for {modules}")
+        print(f"User message: {user_message}")
+
         if not modules:
             return jsonify({'error': 'No modules provided'}), 400
-        
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
-        
-        # Use LLM to optimize
-        result = chat_optimize_timetable(modules, user_message)
-        
-        if 'error' in result:
-            return jsonify(result), 500
-        
-        return jsonify(result)
-        
+
+        if not LLM_AVAILABLE or not openai_client:
+            return jsonify({'error': 'LLM not available'}), 500
+
+        prompt = (
+            f"You are an expert NUS timetable optimizer.\n\n"
+            f"Given these modules: {', '.join(modules)}, "
+            f"generate a timetable optimization suggestion.\n"
+            f"User’s preferences: {user_message}.\n"
+            f"Explain your reasoning in short bullet points and suggest how to improve compactness and minimize travel."
+        )
+
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful timetable optimization assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            timeout=60
+        )
+
+        chatgpt_text = response.choices[0].message.content.strip()
+
+        print("✓ ChatGPT optimization completed.")
+
+        return jsonify({
+            "success": True,
+            "response": chatgpt_text
+        }), 200
+
     except Exception as e:
-        print(f"Error: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     print("\n" + "="*60)
