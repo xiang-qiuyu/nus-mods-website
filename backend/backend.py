@@ -990,7 +990,9 @@ def chat_optimize_timetable(modules: List[str], user_message: str) -> Dict:
     module_info = format_module_data_for_llm(module_data_dict, lessons_dict)
     
     # Create prompt for GPT
-    system_prompt = """You are an expert NUS timetable optimizer. 
+    system_prompt = """You are an expert university academic advisor specializing in timetable optimization for NUS (National University of Singapore), 
+    make sure that all classes,labs,seminar, or any other types are accounted for in the final timetable 
+    (you cant take a module without taking all its component classes!!!). 
 
 Your task:
 1. Understand the user's scheduling preferences
