@@ -12,10 +12,6 @@ from ortools.sat.python import cp_model
 from typing import List, Dict, Tuple
 from collections import defaultdict
 import traceback
-import openai
-import os
-from dotenv import load_dotenv
-import json
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
@@ -87,6 +83,7 @@ class TimetableOptimizer:
         self.preferences = preferences
         self.module_data = {}
         self.lessons_by_module = {}
+        self.venue_coordinates = self._load_venue_coordinates()
         
     def fetch_module_data(self):
         """Fetch all module data from API"""
@@ -99,6 +96,183 @@ class TimetableOptimizer:
                 print(f"✓ Loaded {module_code}: {data.get('title', 'Unknown')}")
             else:
                 print(f"✗ Failed to load {module_code}")
+    
+    def _load_venue_coordinates(self) -> Dict[str, Tuple[float, float]]:
+        """Load venue coordinates for distance calculation"""
+        return {
+            # Engineering Faculty (Kent Ridge Campus)
+            'E1': (1.2966, 103.7764),
+            'E2': (1.2966, 103.7764),
+            'E3': (1.2966, 103.7764),
+            'E4': (1.2966, 103.7764),
+            'E5': (1.2966, 103.7764),
+            'EA': (1.2966, 103.7764),
+            'EB': (1.2966, 103.7764),
+            'EC': (1.2966, 103.7764),
+            'ED': (1.2966, 103.7764),
+            'EE': (1.2966, 103.7764),
+            'EF': (1.2966, 103.7764),
+            'EG': (1.2966, 103.7764),
+            'EH': (1.2966, 103.7764),
+            'EI': (1.2966, 103.7764),
+            'EJ': (1.2966, 103.7764),
+            'EK': (1.2966, 103.7764),
+            'EL': (1.2966, 103.7764),
+            'EM': (1.2966, 103.7764),
+            'EN': (1.2966, 103.7764),
+            'EO': (1.2966, 103.7764),
+            'EP': (1.2966, 103.7764),
+            'EQ': (1.2966, 103.7764),
+            'ER': (1.2966, 103.7764),
+            'ES': (1.2966, 103.7764),
+            'ET': (1.2966, 103.7764),
+            'EU': (1.2966, 103.7764),
+            'EV': (1.2966, 103.7764),
+            'EW': (1.2966, 103.7764),
+            'EX': (1.2966, 103.7764),
+            'EY': (1.2966, 103.7764),
+            'EZ': (1.2966, 103.7764),
+            
+            # Science Faculty (Kent Ridge Campus)
+            'S1': (1.2966, 103.7764),
+            'S2': (1.2966, 103.7764),
+            'S3': (1.2966, 103.7764),
+            'S4': (1.2966, 103.7764),
+            'S5': (1.2966, 103.7764),
+            'SA': (1.2966, 103.7764),
+            'SB': (1.2966, 103.7764),
+            'SC': (1.2966, 103.7764),
+            'SD': (1.2966, 103.7764),
+            'SE': (1.2966, 103.7764),
+            'SF': (1.2966, 103.7764),
+            'SG': (1.2966, 103.7764),
+            'SH': (1.2966, 103.7764),
+            'SI': (1.2966, 103.7764),
+            'SJ': (1.2966, 103.7764),
+            'SK': (1.2966, 103.7764),
+            'SL': (1.2966, 103.7764),
+            'SM': (1.2966, 103.7764),
+            'SN': (1.2966, 103.7764),
+            'SO': (1.2966, 103.7764),
+            'SP': (1.2966, 103.7764),
+            'SQ': (1.2966, 103.7764),
+            'SR': (1.2966, 103.7764),
+            'SS': (1.2966, 103.7764),
+            'ST': (1.2966, 103.7764),
+            'SU': (1.2966, 103.7764),
+            'SV': (1.2966, 103.7764),
+            'SW': (1.2966, 103.7764),
+            'SX': (1.2966, 103.7764),
+            'SY': (1.2966, 103.7764),
+            'SZ': (1.2966, 103.7764),
+            
+            # Arts & Social Sciences (Kent Ridge Campus)
+            'AS1': (1.2966, 103.7764),
+            'AS2': (1.2966, 103.7764),
+            'AS3': (1.2966, 103.7764),
+            'AS4': (1.2966, 103.7764),
+            'AS5': (1.2966, 103.7764),
+            'AS6': (1.2966, 103.7764),
+            'AS7': (1.2966, 103.7764),
+            'AS8': (1.2966, 103.7764),
+            
+            # Business School (Kent Ridge Campus)
+            'BIZ1': (1.2966, 103.7764),
+            'BIZ2': (1.2966, 103.7764),
+            'BIZ3': (1.2966, 103.7764),
+            'BIZ4': (1.2966, 103.7764),
+            'BIZ5': (1.2966, 103.7764),
+            'BIZ6': (1.2966, 103.7764),
+            'BIZ7': (1.2966, 103.7764),
+            'BIZ8': (1.2966, 103.7764),
+            
+            # Computing (Kent Ridge Campus)
+            'COM1': (1.2966, 103.7764),
+            'COM2': (1.2966, 103.7764),
+            'COM3': (1.2966, 103.7764),
+            'COM4': (1.2966, 103.7764),
+            'COM5': (1.2966, 103.7764),
+            'COM6': (1.2966, 103.7764),
+            'COM7': (1.2966, 103.7764),
+            'COM8': (1.2966, 103.7764),
+            
+            # Design & Environment (Kent Ridge Campus)
+            'DE1': (1.2966, 103.7764),
+            'DE2': (1.2966, 103.7764),
+            'DE3': (1.2966, 103.7764),
+            'DE4': (1.2966, 103.7764),
+            'DE5': (1.2966, 103.7764),
+            'DE6': (1.2966, 103.7764),
+            'DE7': (1.2966, 103.7764),
+            'DE8': (1.2966, 103.7764),
+            
+            # Medicine (Kent Ridge Campus)
+            'MD1': (1.2966, 103.7764),
+            'MD2': (1.2966, 103.7764),
+            'MD3': (1.2966, 103.7764),
+            'MD4': (1.2966, 103.7764),
+            'MD5': (1.2966, 103.7764),
+            'MD6': (1.2966, 103.7764),
+            'MD7': (1.2966, 103.7764),
+            'MD8': (1.2966, 103.7764),
+            
+            # Law (Kent Ridge Campus)
+            'LAW1': (1.2966, 103.7764),
+            'LAW2': (1.2966, 103.7764),
+            'LAW3': (1.2966, 103.7764),
+            'LAW4': (1.2966, 103.7764),
+            'LAW5': (1.2966, 103.7764),
+            'LAW6': (1.2966, 103.7764),
+            'LAW7': (1.2966, 103.7764),
+            'LAW8': (1.2966, 103.7764),
+            
+            # Default coordinates for unknown venues (Kent Ridge Campus)
+            'UNKNOWN': (1.2966, 103.7764)
+        }
+    
+    def _get_venue_coordinates(self, venue: str) -> Tuple[float, float]:
+        """Get coordinates for a venue, with fallback for unknown venues"""
+        # Extract building code from venue string
+        venue_code = venue.split()[0] if venue else 'UNKNOWN'
+        
+        # Try exact match first
+        if venue_code in self.venue_coordinates:
+            return self.venue_coordinates[venue_code]
+        
+        # Try partial matches for common patterns
+        for known_venue, coords in self.venue_coordinates.items():
+            if venue_code.startswith(known_venue) or known_venue.startswith(venue_code):
+                return coords
+        
+        # Default fallback
+        return self.venue_coordinates['UNKNOWN']
+    
+    def _calculate_distance(self, venue1: str, venue2: str) -> float:
+        """Calculate walking distance between two venues using Haversine formula"""
+        if venue1 == venue2:
+            return 0.0
+        
+        coord1 = self._get_venue_coordinates(venue1)
+        coord2 = self._get_venue_coordinates(venue2)
+        
+        import math
+        
+        lat1, lon1 = coord1
+        lat2, lon2 = coord2
+        
+        # convert to radianss
+        lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+        
+        # haversine formula
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        c = 2 * math.asin(math.sqrt(a))
+        
+        r = 6371
+        
+        distance_km = c * r
+        return distance_km * 1000  
     
     def _get_exam_interval_for_module(self, module_code: str) -> Optional[Tuple[datetime, datetime]]:
         """
@@ -242,7 +416,12 @@ class TimetableOptimizer:
                 
                 # Constraint: exactly one class must be chosen per lesson type
                 model.Add(sum(var for var, _ in class_vars[module][lesson_type].values()) == 1)
-        
+
+                if module == 'NST2046':
+                    print(f"\nNST2046 {lesson_type} classes:")
+                    for class_no, (var, sessions) in class_vars[module][lesson_type].items():
+                        for session in sessions:
+                            print(f"  Class {class_no}: {session['day']} {session['startTime']}-{session['endTime']}")
         if not class_vars:
             print("No valid class variables created")
             return []
@@ -270,6 +449,16 @@ class TimetableOptimizer:
             lunch_penalty = self._add_lunch_break_constraint(model, all_selected_lessons)
             if lunch_penalty is not None:
                 objective_terms.append(lunch_penalty)
+        
+        if self.preferences.get('minimizeTravel'):
+            travel_penalty = self._add_minimize_travel_constraint(model, all_selected_lessons)
+            if travel_penalty is not None:
+                objective_terms.append(travel_penalty)
+        
+        if self.preferences.get('compactSchedule'):
+            gap_penalty = self._add_compact_schedule_constraint(model, all_selected_lessons)
+            if gap_penalty is not None:
+                objective_terms.append(gap_penalty)
         
         if objective_terms:
             model.Minimize(sum(objective_terms))
@@ -456,8 +645,8 @@ class TimetableOptimizer:
                 friday_vars.append(var)
         
         if friday_vars:
-            penalty = model.NewIntVar(0, len(friday_vars) * 15, 'friday_penalty')
-            model.Add(penalty == sum(friday_vars) * 15)
+            penalty = model.NewIntVar(0, len(friday_vars) * 2, 'friday_penalty')
+            model.Add(penalty == sum(friday_vars) * 2)
             return penalty
         return None
     
@@ -473,9 +662,96 @@ class TimetableOptimizer:
                 lunch_vars.append(var)
         
         if lunch_vars:
-            penalty = model.NewIntVar(0, len(lunch_vars) * 8, 'lunch_penalty')
-            model.Add(penalty == sum(lunch_vars) * 8)
+            penalty = model.NewIntVar(0, len(lunch_vars) * 2, 'lunch_penalty')
+            model.Add(penalty == sum(lunch_vars) * 2)
             return penalty
+        return None
+    
+    def _add_minimize_travel_constraint(self, model, all_selected_lessons):
+        """Penalize schedules that require significant travel between venues"""
+        # Group lessons by day to calculate travel distances
+        daily_lessons = defaultdict(list)
+        for var, session, module, lesson_type, class_no in all_selected_lessons:
+            daily_lessons[session['day']].append((var, session))
+        
+        travel_penalties = []
+        
+        for day, lessons in daily_lessons.items():
+            if len(lessons) < 2:
+                continue  # No travel needed for single lesson days
+            
+            # Calculate travel distances between consecutive lessons
+            for i in range(len(lessons) - 1):
+                var1, session1 = lessons[i]
+                var2, session2 = lessons[i + 1]
+                
+                # Only penalize if both lessons are selected
+                venue1 = session1['venue']
+                venue2 = session2['venue']
+                distance = self._calculate_distance(venue1, venue2)
+                
+                # Create penalty variable for this travel segment
+                # Scale penalty based on distance (penalty increases with distance)
+                max_penalty = int(distance / 100)  # 1 penalty point per 100
+                travel_penalty = model.NewIntVar(0, max_penalty, f'travel_{day}_{i}')
+                
+                # If both lessons are selected, apply the penalty
+                model.Add(travel_penalty >= (var1 + var2 - 1) * max_penalty)
+                travel_penalties.append(travel_penalty)
+        
+        if travel_penalties:
+            total_penalty = model.NewIntVar(0, sum(p.Proto().domain[1] for p in travel_penalties), 'total_travel_penalty')
+            model.Add(total_penalty == sum(travel_penalties))
+            return total_penalty
+        return None
+    
+    def _add_compact_schedule_constraint(self, model, all_selected_lessons):
+        """Penalize gaps between classes to encourage compact schedules"""
+        # Group lessons by day
+        daily_lessons = defaultdict(list)
+        for var, session, module, lesson_type, class_no in all_selected_lessons:
+            daily_lessons[session['day']].append((var, session))
+    
+        gap_penalties = []
+    
+        for day, lessons in daily_lessons.items():
+            if len(lessons) < 2:
+                continue  # No gaps for single lesson days
+        
+            # Sort lessons by start time (deterministic ordering)
+            lessons_sorted = sorted(lessons, key=lambda x: x[1]['startTime'])
+
+            # DEBUG: Print all lessons on this day
+            print(f"\n{day} lessons (sorted):")
+            for var, session in lessons_sorted:
+                print(f"  {session['startTime']}-{session['endTime']}")
+
+            # Calculate gaps between ALL pairs of lessons (not just consecutive)
+            for i in range(len(lessons)):
+                for j in range(i + 1, len(lessons)):
+                    var1, session1 = lessons[i]
+                    var2, session2 = lessons[j]
+        
+                    # Calculate gap in 30-min slots
+                    end_slot1 = self.time_to_slot(session1['endTime'])
+                    start_slot2 = self.time_to_slot(session2['startTime'])
+                    gap_slots = start_slot2 - end_slot1
+        
+                    if gap_slots > 0:  # Only if session2 is after session1
+                        # Convert to hours and create penalty
+                        gap_hours = gap_slots // 2
+                        max_penalty = gap_hours * 5  # 5 penalty points per gap hour
+            
+                        gap_penalty = model.NewIntVar(0, max_penalty, f'gap_{day}_{i}_{j}')
+            
+                        # If both lessons are selected, apply the penalty
+                        model.Add(gap_penalty >= (var1 + var2 - 1) * max_penalty)
+                        gap_penalties.append(gap_penalty)
+    
+        if gap_penalties:
+            total_penalty = model.NewIntVar(0, sum(p.Proto().domain[1] for p in gap_penalties), 'total_gap_penalty')
+            model.Add(total_penalty == sum(gap_penalties))
+            return total_penalty
         return None
     
     def _format_solutions(self, raw_solutions: List[Dict]) -> List[Dict]:
@@ -516,17 +792,55 @@ class TimetableOptimizer:
         
         if self.preferences.get('noMorningClasses'):
             morning_count = sum(1 for s in schedule if self.time_to_slot(s['startTime']) < 4)
-            score -= morning_count * 5
+            score -= morning_count * 1
         
         if self.preferences.get('freeFridays'):
             friday_count = sum(1 for s in schedule if s['day'] == 'Friday')
-            score -= friday_count * 10
+            score -= friday_count * 2
         
         if self.preferences.get('lunchBreak'):
             lunch_conflicts = self._get_lunch_conflicts(schedule)
-            score -= len(lunch_conflicts) * 8
+            score -= len(lunch_conflicts) * 2
         
-        return max(0, score)
+        if self.preferences.get('minimizeTravel'):
+            total_travel_distance = self._calculate_total_travel_distance(schedule)
+            # Deduct 1 point per 100m of travel distance
+            travel_penalty = int(total_travel_distance / 100)
+            score -= travel_penalty
+
+        if self.preferences.get('compactSchedule'):
+            total_gaps = self._calculate_total_gaps(schedule)
+            score -= total_gaps * 5 # Each hour of gap costs 5 points
+    
+        return max(0,score)
+    
+    def _calculate_total_travel_distance(self, schedule: List[Dict]) -> float:
+        """Calculate total travel distance for a schedule"""
+        if len(schedule) < 2:
+            return 0.0
+        
+        # Group lessons by day
+        daily_lessons = defaultdict(list)
+        for slot in schedule:
+            daily_lessons[slot['day']].append(slot)
+        
+        total_distance = 0.0
+        
+        for day, lessons in daily_lessons.items():
+            if len(lessons) < 2:
+                continue
+            
+            # Sort lessons by time
+            lessons.sort(key=lambda x: x['startTime'])
+            
+            # Calculate distance between consecutive lessons
+            for i in range(len(lessons) - 1):
+                venue1 = lessons[i]['venue']
+                venue2 = lessons[i + 1]['venue']
+                distance = self._calculate_distance(venue1, venue2)
+                total_distance += distance
+        
+        return total_distance
     
     def _generate_tradeoffs(self, schedule: List[Dict]) -> List[str]:
         """Generate human-readable tradeoff explanations"""
@@ -553,6 +867,23 @@ class TimetableOptimizer:
             else:
                 tradeoffs.append(f'⚠ Lunch conflicts on: {", ".join(lunch_conflicts)}')
         
+        if self.preferences.get('minimizeTravel'):
+            total_travel_distance = self._calculate_total_travel_distance(schedule)
+            if total_travel_distance < 100:  # Less than 100m total travel
+                tradeoffs.append('✓ Minimal travel between venues')
+            elif total_travel_distance < 500:  # Less than 500m total travel
+                tradeoffs.append(f'⚠ Moderate travel: {total_travel_distance:.0f}m between venues')
+            else:  # More than 500m total travel
+                tradeoffs.append(f'⚠ High travel: {total_travel_distance:.0f}m between venues')
+        
+        # Show gap information if compact schedule preferred
+        if self.preferences.get('compactSchedule'):
+            total_gaps = self._calculate_total_gaps(schedule)
+            if total_gaps == 0:
+                tradeoffs.append('✓ No gaps between classes (fully compact)')
+            else:
+                tradeoffs.append(f'⏰ {total_gaps} hour(s) of gaps between classes')
+
         days_with_classes = set(s['day'] for s in schedule)
         tradeoffs.append(f'📅 Classes spread across {len(days_with_classes)} day(s)')
         
@@ -575,181 +906,143 @@ class TimetableOptimizer:
         
         return conflict_days
 
-# ==================== ChatGPT Integration ====================
+    def _calculate_total_gaps(self, schedule: List[Dict]) -> int:
+        """Calculate total hours of gaps between classes"""
+        # Group by day
+        days_schedule = defaultdict(list)
+        for slot in schedule:
+            days_schedule[slot['day']].append(slot)
+    
+        total_gap_hours = 0
+        for day, slots in days_schedule.items():
+            # Sort by start time
+            sorted_slots = sorted(slots, key=lambda x: x['startTime'])
+        
+            # Calculate gaps between consecutive classes
+            for i in range(len(sorted_slots) - 1):
+                end_time = self.time_to_slot(sorted_slots[i]['endTime'])
+                start_time = self.time_to_slot(sorted_slots[i + 1]['startTime'])
+            
+                gap_slots = start_time - end_time
+                # Only count gaps > 0 (30 min intervals)
+                if gap_slots > 0:
+                    # Convert slots to hours (2 slots = 1 hour)
+                    gap_hours = gap_slots // 2
+                    total_gap_hours += gap_hours
+    
+        return total_gap_hours
 
-load_dotenv()  # Load environment variables from .env file
+# ==================== LLM Chat Optimizer (OpenAI) ====================
 
-def generate_chatgpt_prompt(modules: List[str], preferences: Dict, blocked_times: List[Dict], user_notes: str = "") -> str:
-    """
-    Generate a comprehensive prompt for ChatGPT to create timetable schedules.
-    """
+def format_module_data_for_llm(module_data_dict: Dict, lessons_dict: Dict) -> str:
+    """Format module timetable data as simple text"""
+    text = ""
+    for module_code, lessons in lessons_dict.items():
+        title = module_data_dict[module_code].get('title', '')
+        text += f"\n{module_code} - {title}:\n"
+        for lesson_type, classes in lessons.items():
+            text += f"  {lesson_type}:\n"
+            for class_no, sessions in classes.items():
+                text += f"    Class {class_no}:\n"
+                for session in sessions:
+                    text += f"      {session['day']} {session['startTime']}-{session['endTime']} @ {session['venue']}\n"
+    return text
+
+
+def chat_optimize_timetable(modules: List[str], user_message: str) -> Dict:
+    """Use OpenAI GPT to understand user preferences and generate optimized timetable"""
+    
+    if not LLM_AVAILABLE or not openai_client:
+        return {
+            'error': 'LLM service not available. Please set OPENAI_API_KEY environment variable.'
+        }
     
     # Fetch module data
-    module_details = {}
+    module_data_dict = {}
+    lessons_dict = {}
+    
     for module_code in modules:
         data = NUSModsAPI.get_module_data(module_code)
         if data:
-            lessons = NUSModsAPI.parse_lessons(data)
-            module_details[module_code] = {
-                'title': data.get('title', 'Unknown'),
-                'lessons': lessons
-            }
+            module_data_dict[module_code] = data
+            lessons_dict[module_code] = NUSModsAPI.parse_lessons(data)
     
-    # Build the prompt
-    prompt = f"""You are an expert university academic advisor specializing in timetable optimization for NUS (National University of Singapore), 
-    make sure that all classes,labs,seminar, or any other types are accounted for in the final timetable (you cant take a module without taking all its component classes!!!).
+    if not lessons_dict:
+        return {'error': 'Failed to load module data'}
     
-
-**TASK**: Create 3-5 optimal class schedules based on the following information.
-
-**STUDENT'S MODULES**:
-{json.dumps(modules, indent=2)}
-
-**MODULE DETAILS**:
-{json.dumps(module_details, indent=2)}
-
-**STUDENT'S PREFERENCES**:
-"""
+    # Format module data
+    module_info = format_module_data_for_llm(module_data_dict, lessons_dict)
     
-    if preferences.get('noMorningClasses'):
-        prompt += "- ✓ No classes before 10:00 AM\n"
-    if preferences.get('freeFridays'):
-        prompt += "- ✓ Keep Fridays completely free\n"
-    if preferences.get('lunchBreak'):
-        prompt += "- ✓ Preserve lunch break (12:00-14:00) every day\n"
-    if preferences.get('compactSchedule'):
-        prompt += "- ✓ Minimize gaps between classes (compact schedule)\n"
-    if preferences.get('minimizeTravel'):
-        prompt += "- ✓ Minimize walking distance between venues\n"
-    
-    if blocked_times:
-        prompt += f"\n**BLOCKED TIME SLOTS** (Student is unavailable):\n"
-        for blocked in blocked_times:
-            prompt += f"- {blocked['day']} {blocked['startTime']}-{blocked['endTime']}\n"
-    
-    if user_notes:
-        prompt += f"\n**ADDITIONAL NOTES FROM STUDENT**:\n{user_notes}\n"
-    
-    prompt += """
+    # Create prompt for GPT
+    system_prompt = """You are an expert NUS timetable optimizer. 
 
-**OUTPUT REQUIREMENTS**:
+Your task:
+1. Understand the user's scheduling preferences
+2. Analyze available lesson slots
+3. Select ONE class for each lesson type (Lecture, Tutorial, Lab, etc.) for each module
+4. Ensure no time conflicts
+5. Return 2-3 optimal timetable options as JSON
 
-For each schedule option, provide:
-
-1. **Schedule ID**: Option 1, Option 2, etc.
-2. **Quality Score**: 0-100 (explain scoring)
-3. **Weekly Timetable**: Present as a table with columns:
-   - Day | Time | Module | Type (Lecture/Tutorial/Lab) | Class No | Venue
-
-4. **Constraint Analysis**:
-   - ✅ Satisfied preferences
-   - ⚠️ Compromised preferences (explain why)
-   - ❌ Violations (if any)
-
-5. **Trade-offs**: Explain key decisions made
-
-6. **Exam Schedule**: Check for exam clashes
-
-7. **Recommendation**: Which option is best and why
-
-**IMPORTANT RULES**:
-- Each module requires selecting ONE class number per lesson type (Lecture, Tutorial, Lab, etc.)
-- Classes from the same module/type CANNOT overlap
-- Classes must not conflict with blocked time slots
-- Explain ALL scheduling decisions
-- If no feasible schedule exists, explain why and suggest alternatives
-
-Generate 3-5 schedule options now, ranked by quality score.
-"""
-    
-    return prompt
-
-
-@app.route('/api/optimize-chatgpt', methods=['POST'])
-def optimize_with_chatgpt():
-    """
-    ChatGPT-powered timetable optimization endpoint
-    
-    Expected JSON body:
+Return ONLY valid JSON in this exact format:
+{
+  "timetables": [
     {
-        "modules": ["CS1010", "MA1521"],
-        "preferences": {...},
-        "blockedTimes": [...],
-        "userNotes": "I prefer morning classes and need time for gym in the evening"
+      "schedule": [
+        {"module": "CS1010", "type": "Lecture", "classNo": "1", "day": "Monday", "startTime": "0900", "endTime": "1100", "venue": "COM1-0210", "weeks": [1,2,3,4,5,6,7,8,9,10,11,12,13]}
+      ],
+      "explanation": "Brief explanation why this timetable is good",
+      "tradeoffs": ["✓ Pros", "⚠ Cons"]
     }
-    """
-    
+  ]
+}"""
+
+    user_prompt = f"""Create optimized timetables for: {', '.join(modules)}
+
+User's request: "{user_message}"
+
+Available lesson slots:
+{module_info}
+
+Generate 2-3 optimal timetable options. Return ONLY the JSON response."""
+
     try:
-        data = request.json
-        modules = data.get('modules', [])
-        preferences = data.get('preferences', {})
-        blocked_times = data.get('blockedTimes', [])
-        user_notes = data.get('userNotes', '')
-        
-        print(f"\n{'='*60}")
-        print(f"ChatGPT Optimization Request:")
-        print(f"Modules: {modules}")
-        print(f"User Notes: {user_notes}")
-        print(f"{'='*60}\n")
-        
-        if not modules:
-            return jsonify({'error': 'No modules provided'}), 400
-        
-        # Check for API key
-        api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            return jsonify({
-                'error': 'OpenAI API key not configured. Please add OPENAI_API_KEY to your .env file'
-            }), 500
-        
-        # Generate prompt
-        prompt = generate_chatgpt_prompt(modules, preferences, blocked_times, user_notes)
+        print(f"\n🤖 Calling OpenAI GPT for: {modules}")
         
         # Call OpenAI API
-        client = openai.OpenAI(api_key=api_key)
-        
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",  # or "gpt-3.5-turbo" for faster/cheaper
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
             messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert university academic advisor specializing in timetable optimization. Provide detailed, well-structured schedule recommendations."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
             ],
             temperature=0.7,
             max_tokens=4000
         )
         
-        chatgpt_response = response.choices[0].message.content
+        llm_response = response.choices[0].message.content.strip()
         
-        print(f"\n{'='*60}")
-        print(f"ChatGPT Response Received")
-        print(f"{'='*60}\n")
+        # Clean markdown formatting
+        if "```json" in llm_response:
+            llm_response = llm_response.split("```json")[1].split("```")[0].strip()
+        elif "```" in llm_response:
+            llm_response = llm_response.split("```")[1].split("```")[0].strip()
         
-        return jsonify({
+        result = json.loads(llm_response)
+        print(f"✓ Generated {len(result.get('timetables', []))} timetables\n")
+        
+        return {
             'success': True,
-            'response': chatgpt_response,
-            'prompt_used': prompt,  # For debugging
-            'model': response.model,
-            'usage': {
-                'prompt_tokens': response.usage.prompt_tokens,
-                'completion_tokens': response.usage.completion_tokens,
-                'total_tokens': response.usage.total_tokens
-            }
-        })
+            'timetables': result.get('timetables', []),
+            'count': len(result.get('timetables', []))
+        }
         
-    except openai.APIError as e:
-        print(f"OpenAI API Error: {str(e)}")
-        return jsonify({'error': f'OpenAI API Error: {str(e)}'}), 500
+    except json.JSONDecodeError as e:
+        print(f"JSON parse error: {e}")
+        return {'error': f'Failed to parse LLM response: {str(e)}'}
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"LLM error: {e}")
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
-
+        return {'error': f'LLM optimization failed: {str(e)}'}
 
 # ==================== Flask API Routes ====================
 
@@ -847,6 +1140,46 @@ def get_module_info(module_code):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/chat-optimize', methods=['POST'])
+def chat_optimize():
+    """
+    LLM chat-based optimization endpoint using OpenAI GPT
+    
+    Expected JSON body:
+    {
+        "modules": ["NST2046", "ST3131", "BT3102", "QF3101", "NHS2099", "IS4226"],
+        "message": "I want to minimize travel and squeeze everything into one day"
+    }
+    """
+    try:
+        data = request.json
+        modules = data.get('modules', [])
+        user_message = data.get('message', '')
+        
+        print(f"\n{'='*60}")
+        print(f"🤖 LLM Chat Optimization Request (OpenAI):")
+        print(f"Modules: {modules}")
+        print(f"Message: {user_message}")
+        print(f"{'='*60}\n")
+        
+        if not modules:
+            return jsonify({'error': 'No modules provided'}), 400
+        
+        if not user_message:
+            return jsonify({'error': 'No message provided'}), 400
+        
+        # Use LLM to optimize
+        result = chat_optimize_timetable(modules, user_message)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("\n" + "="*60)
