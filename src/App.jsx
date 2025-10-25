@@ -397,6 +397,12 @@ function App() {
   const [timetables, setTimetables] = useState([]);
   const [error, setError] = useState('');
 
+  // 🆕 New state for ChatGPT mode
+  const [optimizationMode, setOptimizationMode] = useState('ortools'); // 'ortools' or 'chatgpt'
+  const [userNotes, setUserNotes] = useState('');
+  const [chatgptResponse, setChatgptResponse] = useState('');
+  const [showChatGPTResponse, setShowChatGPTResponse] = useState(false);
+
   // Helper function to add a blocked time slot
   const addBlockedTime = (day, startTime, endTime) => {
     // Validate input
@@ -497,6 +503,69 @@ const optimizeTimetable = async () => {
     }
   };
 
+    // 🆕 Function to call ChatGPT API
+    const optimizeWithChatGPT = async () => {
+      setLoading(true);
+      setError('');
+      setChatgptResponse('');
+      setTimetables([]);
+
+      try {
+        const moduleList = modules
+          .split(',')
+          .map((m) => m.trim().toUpperCase())
+          .filter((m) => m);
+
+        if (moduleList.length === 0) {
+          throw new Error('Please enter at least one module code');
+        }
+
+        const requestBody = {
+          modules: moduleList,
+          preferences: preferences,
+          blockedTimes: blockedTimes,
+          userNotes: userNotes
+        };
+
+        console.log('Sending ChatGPT request:', requestBody);
+
+        const response = await fetch('http://localhost:5001/api/optimize-chatgpt', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to generate timetable with ChatGPT');
+        }
+
+        setChatgptResponse(data.response);
+        setShowChatGPTResponse(true);
+        console.log('ChatGPT response received');
+
+      } catch (err) {
+        setError(err.message);
+        console.error('ChatGPT optimization error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  // Update the main optimize function to handle both modes
+  const handleOptimize = () => {
+    if (optimizationMode === 'chatgpt') {
+      optimizeWithChatGPT();
+    } else {
+      optimizeTimetable();
+    }
+  };
+
+
   const exportToNUSMods = (timetable) => {
     // Generate NUSMods share link format
     // Format: ?MOD_CODE[LESSON_TYPE]=CLASS_NO
@@ -564,10 +633,9 @@ const optimizeTimetable = async () => {
         overflowX: "hidden",
       }}
     >
-      <div
-        style={{ width: "100%", padding: "0 60px", boxSizing: "border-box" }}
-      >
-        {/* Header */}
+      <div style={{ width: "100%", padding: "0 60px", boxSizing: "border-box" }}>
+        
+        {/* ==================== HEADER (EXISTING) ==================== */}
         <div style={{ textAlign: "center", marginBottom: "60px" }}>
           <div
             style={{
@@ -599,11 +667,11 @@ const optimizeTimetable = async () => {
               textShadow: "0 2px 4px rgba(0,0,0,0.1)",
             }}
           >
-            AI-powered scheduling using Google OR-Tools and NUSMods API
+            AI-powered scheduling using Google OR-Tools and ChatGPT
           </p>
         </div>
 
-        {/* Input Section */}
+        {/* ==================== INPUT SECTION ==================== */}
         <div
           style={{
             background: "white",
@@ -613,6 +681,122 @@ const optimizeTimetable = async () => {
             marginBottom: "40px",
           }}
         >
+          
+          {/* 🆕 NEW: MODE SELECTOR */}
+          <div style={{ marginBottom: '40px', textAlign: 'center' }}>
+            <h2 style={{
+              fontSize: '28px',
+              fontWeight: '700',
+              marginBottom: '20px',
+              color: '#1f2937'
+            }}>
+              🤖 Choose Optimization Method
+            </h2>
+            
+            <div style={{
+              display: 'flex',
+              gap: '20px',
+              justifyContent: 'center',
+              flexWrap: 'wrap'
+            }}>
+              
+              {/* OR-Tools Option */}
+              <button
+                onClick={() => setOptimizationMode('ortools')}
+                style={{
+                  flex: '1',
+                  minWidth: '280px',
+                  maxWidth: '400px',
+                  padding: '24px',
+                  background: optimizationMode === 'ortools' 
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : '#f3f4f6',
+                  color: optimizationMode === 'ortools' ? 'white' : '#374151',
+                  borderRadius: '16px',
+                  border: optimizationMode === 'ortools' ? '3px solid #667eea' : '3px solid #e5e7eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: optimizationMode === 'ortools' 
+                    ? '0 8px 20px rgba(102, 126, 234, 0.4)'
+                    : '0 2px 8px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => {
+                  if (optimizationMode !== 'ortools') {
+                    e.currentTarget.style.borderColor = '#667eea';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (optimizationMode !== 'ortools') {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚙️</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>
+                  Google OR-Tools
+                </div>
+                <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                  Mathematical optimization solver
+                </div>
+                <div style={{ fontSize: '13px', marginTop: '8px', opacity: 0.8 }}>
+                  ✓ Guaranteed optimal solutions<br/>
+                  ✓ Fast computation<br/>
+                  ✓ Multiple options
+                </div>
+              </button>
+
+              {/* ChatGPT Option */}
+              <button
+                onClick={() => setOptimizationMode('chatgpt')}
+                style={{
+                  flex: '1',
+                  minWidth: '280px',
+                  maxWidth: '400px',
+                  padding: '24px',
+                  background: optimizationMode === 'chatgpt'
+                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                    : '#f3f4f6',
+                  color: optimizationMode === 'chatgpt' ? 'white' : '#374151',
+                  borderRadius: '16px',
+                  border: optimizationMode === 'chatgpt' ? '3px solid #10b981' : '3px solid #e5e7eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: optimizationMode === 'chatgpt'
+                    ? '0 8px 20px rgba(16, 185, 129, 0.4)'
+                    : '0 2px 8px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => {
+                  if (optimizationMode !== 'chatgpt') {
+                    e.currentTarget.style.borderColor = '#10b981';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (optimizationMode !== 'chatgpt') {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>🤖</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>
+                  ChatGPT AI
+                </div>
+                <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                  Natural language reasoning
+                </div>
+                <div style={{ fontSize: '13px', marginTop: '8px', opacity: 0.8 }}>
+                  ✓ Detailed explanations<br/>
+                  ✓ Flexible reasoning<br/>
+                  ✓ Custom requests
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* ==================== MODULE INPUT (EXISTING) ==================== */}
           <h2
             style={{
               fontSize: "28px",
@@ -659,6 +843,44 @@ const optimizeTimetable = async () => {
             </p>
           </div>
 
+          {/* 🆕 NEW: USER NOTES SECTION (Only visible in ChatGPT mode) */}
+          {optimizationMode === 'chatgpt' && (
+            <div style={{ marginBottom: '40px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '12px'
+              }}>
+                💬 Additional Notes & Preferences (Optional)
+              </label>
+              <textarea
+                value={userNotes}
+                onChange={(e) => setUserNotes(e.target.value)}
+                placeholder="Tell ChatGPT anything else about your preferences...&#10;&#10;Examples:&#10;- I prefer morning classes because I'm more alert&#10;- I need time for gym in the evening&#10;- I want to minimize walking between venues&#10;- I have a part-time job on Wednesday evenings&#10;- I prefer to have all classes on Mon/Wed/Fri if possible"
+                rows="6"
+                style={{
+                  width: '100%',
+                  padding: '16px 20px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  outline: 'none',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  transition: 'all 0.3s ease'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#10b981'}
+                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+              />
+              <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+                💡 ChatGPT will consider these notes when generating your schedule
+              </p>
+            </div>
+          )}
+
+          {/* ==================== PREFERENCES (EXISTING) ==================== */}
           <h3
             style={{
               fontSize: "24px",
@@ -724,6 +946,7 @@ const optimizeTimetable = async () => {
             ))}
           </div>
 
+          {/* ==================== BLOCKED TIMES (EXISTING) ==================== */}
           <div style={{ marginTop: '40px', marginBottom: '30px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', margin: 0 }}>
@@ -747,7 +970,6 @@ const optimizeTimetable = async () => {
               </button>
             </div>
 
-            {/* Add Blocked Time Form */}
             {showBlockedTimeForm && (
               <div style={{
                 background: '#f9fafb',
@@ -760,7 +982,6 @@ const optimizeTimetable = async () => {
               </div>
             )}
 
-            {/* Display Current Blocked Times */}
             {blockedTimes.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {blockedTimes.map((blocked, index) => (
@@ -813,13 +1034,16 @@ const optimizeTimetable = async () => {
             )}
           </div>
 
+          {/* 🆕 UPDATED: OPTIMIZE BUTTON (Now calls handleOptimize) */}
           <button
-            onClick={optimizeTimetable}
+            onClick={handleOptimize}
             disabled={loading}
             style={{
               width: "100%",
               background: loading
                 ? "#9ca3af"
+                : optimizationMode === 'chatgpt'
+                ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
                 : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
               color: "white",
               padding: "16px",
@@ -834,6 +1058,8 @@ const optimizeTimetable = async () => {
               gap: "12px",
               boxShadow: loading
                 ? "none"
+                : optimizationMode === 'chatgpt'
+                ? "0 8px 20px rgba(16, 185, 129, 0.4)"
                 : "0 8px 20px rgba(102, 126, 234, 0.4)",
               transform: loading ? "none" : "translateY(0)",
               transition: "all 0.3s ease",
@@ -841,15 +1067,17 @@ const optimizeTimetable = async () => {
             onMouseOver={(e) => {
               if (!loading) {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow =
-                  "0 12px 28px rgba(102, 126, 234, 0.5)";
+                e.currentTarget.style.boxShadow = optimizationMode === 'chatgpt'
+                  ? "0 12px 28px rgba(16, 185, 129, 0.5)"
+                  : "0 12px 28px rgba(102, 126, 234, 0.5)";
               }
             }}
             onMouseOut={(e) => {
               if (!loading) {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow =
-                  "0 8px 20px rgba(102, 126, 234, 0.4)";
+                e.currentTarget.style.boxShadow = optimizationMode === 'chatgpt'
+                  ? "0 8px 20px rgba(16, 185, 129, 0.4)"
+                  : "0 8px 20px rgba(102, 126, 234, 0.4)";
               }
             }}
           >
@@ -859,15 +1087,17 @@ const optimizeTimetable = async () => {
                   size={20}
                   style={{ animation: "spin 1s linear infinite" }}
                 />
-                Optimizing with OR-Tools...
+                {optimizationMode === 'chatgpt' ? 'Asking ChatGPT...' : 'Optimizing with OR-Tools...'}
               </>
             ) : (
-              "Generate Optimal Timetables"
+              <>
+                {optimizationMode === 'chatgpt' ? '🤖 Generate with ChatGPT' : '⚙️ Generate with OR-Tools'}
+              </>
             )}
           </button>
         </div>
 
-        {/* Error Display */}
+        {/* ==================== ERROR DISPLAY (EXISTING) ==================== */}
         {error && (
           <div
             style={{
@@ -890,11 +1120,157 @@ const optimizeTimetable = async () => {
           </div>
         )}
 
-        {/* Results Section */}
+        {/* 🆕 NEW: CHATGPT RESPONSE DISPLAY */}
+        {showChatGPTResponse && chatgptResponse && (
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            boxShadow: '0 25px 70px rgba(0,0,0,0.4)',
+            padding: '50px 60px',
+            marginBottom: '40px',
+            border: '3px solid rgba(16, 185, 129, 0.3)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '30px',
+              flexWrap: 'wrap',
+              gap: '20px'
+            }}>
+              <h2 style={{
+                fontSize: '32px',
+                fontWeight: '700',
+                color: '#1f2937',
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <span style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>
+                  🤖 ChatGPT Recommendations
+                </span>
+              </h2>
+              
+              <button
+                onClick={() => setShowChatGPTResponse(false)}
+                style={{
+                  padding: '10px 20px',
+                  background: '#ef4444',
+                  color: 'white',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = '#dc2626'}
+                onMouseOut={(e) => e.currentTarget.style.background = '#ef4444'}
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            <div style={{
+              background: '#f9fafb',
+              borderRadius: '12px',
+              padding: '30px',
+              border: '2px solid #e5e7eb',
+              fontSize: '15px',
+              lineHeight: '1.8',
+              color: '#374151',
+              whiteSpace: 'pre-wrap',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              maxHeight: '600px',
+              overflowY: 'auto'
+            }}>
+              {chatgptResponse}
+            </div>
+
+            <div style={{
+              marginTop: '30px',
+              display: 'flex',
+              gap: '16px',
+              flexWrap: 'wrap',
+              justifyContent: 'center'
+            }}>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(chatgptResponse);
+                  alert('Response copied to clipboard!');
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '10px',
+                  border: 'none',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#2563eb';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = '#3b82f6';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                📋 Copy Response
+              </button>
+
+              <button
+                onClick={() => {
+                  const blob = new Blob([chatgptResponse], { type: 'text/plain' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'chatgpt_timetable_recommendations.txt';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  window.URL.revokeObjectURL(url);
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: '#8b5cf6',
+                  color: 'white',
+                  borderRadius: '10px',
+                  border: 'none',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#7c3aed';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = '#8b5cf6';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                💾 Download as Text
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== OR-TOOLS RESULTS (EXISTING) ==================== */}
         {timetables.length > 0 && (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "40px" }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
             <h2
               style={{
                 fontSize: "40px",
@@ -928,13 +1304,7 @@ const optimizeTimetable = async () => {
                     gap: "20px",
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "16px",
-                    }}
-                  >
+                  <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                     <h3
                       style={{
                         fontSize: "28px",
@@ -968,9 +1338,7 @@ const optimizeTimetable = async () => {
                       Score: {timetable.score}/100
                     </span>
                   </div>
-                  <div
-                    style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
-                  >
+                  <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
                     <button
                       onClick={() => exportToNUSMods(timetable)}
                       style={{
@@ -1024,7 +1392,6 @@ const optimizeTimetable = async () => {
                   </div>
                 </div>
 
-                {/* Schedule */}
                 <div style={{ marginBottom: "24px" }}>
                   <h4
                     style={{
@@ -1036,13 +1403,7 @@ const optimizeTimetable = async () => {
                   >
                     📅 Weekly Schedule
                   </h4>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "12px",
-                    }}
-                  >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                     {timetable.schedule.map((slot, idx) => (
                       <div
                         key={idx}
@@ -1110,9 +1471,7 @@ const optimizeTimetable = async () => {
                           }}
                         >
                           <MapPin size={18} />
-                          <span style={{ fontWeight: "500" }}>
-                            {slot.venue}
-                          </span>
+                          <span style={{ fontWeight: "500" }}>{slot.venue}</span>
                         </div>
                         <div
                           style={{
@@ -1128,7 +1487,6 @@ const optimizeTimetable = async () => {
                   </div>
                 </div>
 
-                {/* Tradeoffs */}
                 <div>
                   <h4
                     style={{
@@ -1144,9 +1502,7 @@ const optimizeTimetable = async () => {
                     <CheckCircle size={24} color="#16a34a" />
                     Trade-offs & Explanations
                   </h4>
-                  <ul
-                    style={{ margin: 0, paddingLeft: "0", listStyle: "none" }}
-                  >
+                  <ul style={{ margin: 0, paddingLeft: "0", listStyle: "none" }}>
                     {timetable.tradeoffs.map((tradeoff, idx) => (
                       <li
                         key={idx}
@@ -1170,7 +1526,7 @@ const optimizeTimetable = async () => {
           </div>
         )}
 
-        {/* Info Box */}
+        {/* ==================== INFO BOX (EXISTING) ==================== */}
         <div
           style={{
             background: "rgba(255, 255, 255, 0.98)",
@@ -1203,15 +1559,9 @@ const optimizeTimetable = async () => {
             }}
           >
             <li>Fetches module data from NUSMods API</li>
-            <li>
-              Uses Google OR-Tools CP-SAT solver for constraint satisfaction
-            </li>
-            <li>
-              Generates multiple optimized timetables based on your preferences
-            </li>
-            <li>
-              Explains trade-offs in plain language for informed decision-making
-            </li>
+            <li>Choose between Google OR-Tools (fast, optimal) or ChatGPT (flexible, detailed)</li>
+            <li>OR-Tools uses CP-SAT solver for guaranteed optimal solutions</li>
+            <li>ChatGPT provides natural language reasoning and custom recommendations</li>
             <li>Export to NUSMods or .ics calendar format</li>
           </ul>
         </div>

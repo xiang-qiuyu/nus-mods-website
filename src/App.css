@@ -18,6 +18,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Spinning animation for loader */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -25,4 +26,39 @@ body {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Smooth scrollbar for ChatGPT response */
+div::-webkit-scrollbar {
+  width: 10px;
+}
+
+div::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+div::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+div::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
 }

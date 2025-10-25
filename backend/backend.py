@@ -12,6 +12,10 @@ from ortools.sat.python import cp_model
 from typing import List, Dict, Tuple
 from collections import defaultdict
 import traceback
+import openai
+import os
+from dotenv import load_dotenv
+import json
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
@@ -570,6 +574,181 @@ class TimetableOptimizer:
                     break
         
         return conflict_days
+
+# ==================== ChatGPT Integration ====================
+
+load_dotenv()  # Load environment variables from .env file
+
+def generate_chatgpt_prompt(modules: List[str], preferences: Dict, blocked_times: List[Dict], user_notes: str = "") -> str:
+    """
+    Generate a comprehensive prompt for ChatGPT to create timetable schedules.
+    """
+    
+    # Fetch module data
+    module_details = {}
+    for module_code in modules:
+        data = NUSModsAPI.get_module_data(module_code)
+        if data:
+            lessons = NUSModsAPI.parse_lessons(data)
+            module_details[module_code] = {
+                'title': data.get('title', 'Unknown'),
+                'lessons': lessons
+            }
+    
+    # Build the prompt
+    prompt = f"""You are an expert university academic advisor specializing in timetable optimization for NUS (National University of Singapore), 
+    make sure that all classes,labs,seminar, or any other types are accounted for in the final timetable (you cant take a module without taking all its component classes!!!).
+    
+
+**TASK**: Create 3-5 optimal class schedules based on the following information.
+
+**STUDENT'S MODULES**:
+{json.dumps(modules, indent=2)}
+
+**MODULE DETAILS**:
+{json.dumps(module_details, indent=2)}
+
+**STUDENT'S PREFERENCES**:
+"""
+    
+    if preferences.get('noMorningClasses'):
+        prompt += "- ✓ No classes before 10:00 AM\n"
+    if preferences.get('freeFridays'):
+        prompt += "- ✓ Keep Fridays completely free\n"
+    if preferences.get('lunchBreak'):
+        prompt += "- ✓ Preserve lunch break (12:00-14:00) every day\n"
+    if preferences.get('compactSchedule'):
+        prompt += "- ✓ Minimize gaps between classes (compact schedule)\n"
+    if preferences.get('minimizeTravel'):
+        prompt += "- ✓ Minimize walking distance between venues\n"
+    
+    if blocked_times:
+        prompt += f"\n**BLOCKED TIME SLOTS** (Student is unavailable):\n"
+        for blocked in blocked_times:
+            prompt += f"- {blocked['day']} {blocked['startTime']}-{blocked['endTime']}\n"
+    
+    if user_notes:
+        prompt += f"\n**ADDITIONAL NOTES FROM STUDENT**:\n{user_notes}\n"
+    
+    prompt += """
+
+**OUTPUT REQUIREMENTS**:
+
+For each schedule option, provide:
+
+1. **Schedule ID**: Option 1, Option 2, etc.
+2. **Quality Score**: 0-100 (explain scoring)
+3. **Weekly Timetable**: Present as a table with columns:
+   - Day | Time | Module | Type (Lecture/Tutorial/Lab) | Class No | Venue
+
+4. **Constraint Analysis**:
+   - ✅ Satisfied preferences
+   - ⚠️ Compromised preferences (explain why)
+   - ❌ Violations (if any)
+
+5. **Trade-offs**: Explain key decisions made
+
+6. **Exam Schedule**: Check for exam clashes
+
+7. **Recommendation**: Which option is best and why
+
+**IMPORTANT RULES**:
+- Each module requires selecting ONE class number per lesson type (Lecture, Tutorial, Lab, etc.)
+- Classes from the same module/type CANNOT overlap
+- Classes must not conflict with blocked time slots
+- Explain ALL scheduling decisions
+- If no feasible schedule exists, explain why and suggest alternatives
+
+Generate 3-5 schedule options now, ranked by quality score.
+"""
+    
+    return prompt
+
+
+@app.route('/api/optimize-chatgpt', methods=['POST'])
+def optimize_with_chatgpt():
+    """
+    ChatGPT-powered timetable optimization endpoint
+    
+    Expected JSON body:
+    {
+        "modules": ["CS1010", "MA1521"],
+        "preferences": {...},
+        "blockedTimes": [...],
+        "userNotes": "I prefer morning classes and need time for gym in the evening"
+    }
+    """
+    
+    try:
+        data = request.json
+        modules = data.get('modules', [])
+        preferences = data.get('preferences', {})
+        blocked_times = data.get('blockedTimes', [])
+        user_notes = data.get('userNotes', '')
+        
+        print(f"\n{'='*60}")
+        print(f"ChatGPT Optimization Request:")
+        print(f"Modules: {modules}")
+        print(f"User Notes: {user_notes}")
+        print(f"{'='*60}\n")
+        
+        if not modules:
+            return jsonify({'error': 'No modules provided'}), 400
+        
+        # Check for API key
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            return jsonify({
+                'error': 'OpenAI API key not configured. Please add OPENAI_API_KEY to your .env file'
+            }), 500
+        
+        # Generate prompt
+        prompt = generate_chatgpt_prompt(modules, preferences, blocked_times, user_notes)
+        
+        # Call OpenAI API
+        client = openai.OpenAI(api_key=api_key)
+        
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",  # or "gpt-3.5-turbo" for faster/cheaper
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert university academic advisor specializing in timetable optimization. Provide detailed, well-structured schedule recommendations."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+            max_tokens=4000
+        )
+        
+        chatgpt_response = response.choices[0].message.content
+        
+        print(f"\n{'='*60}")
+        print(f"ChatGPT Response Received")
+        print(f"{'='*60}\n")
+        
+        return jsonify({
+            'success': True,
+            'response': chatgpt_response,
+            'prompt_used': prompt,  # For debugging
+            'model': response.model,
+            'usage': {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
+                'total_tokens': response.usage.total_tokens
+            }
+        })
+        
+    except openai.APIError as e:
+        print(f"OpenAI API Error: {str(e)}")
+        return jsonify({'error': f'OpenAI API Error: {str(e)}'}), 500
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 
 # ==================== Flask API Routes ====================
