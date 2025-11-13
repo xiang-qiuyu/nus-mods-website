@@ -87,6 +87,7 @@ class TimetableOptimizer:
         self.preferences = preferences
         self.module_data = {}
         self.lessons_by_module = {}
+        self.venue_coordinates = self._load_venue_coordinates()
         
     def fetch_module_data(self):
         """Fetch all module data from API"""
@@ -99,6 +100,183 @@ class TimetableOptimizer:
                 print(f"✓ Loaded {module_code}: {data.get('title', 'Unknown')}")
             else:
                 print(f"✗ Failed to load {module_code}")
+    
+    def _load_venue_coordinates(self) -> Dict[str, Tuple[float, float]]:
+        """Load venue coordinates for distance calculation"""
+        return {
+            # Engineering Faculty (Kent Ridge Campus)
+            'E1': (1.2966, 103.7764),
+            'E2': (1.2966, 103.7764),
+            'E3': (1.2966, 103.7764),
+            'E4': (1.2966, 103.7764),
+            'E5': (1.2966, 103.7764),
+            'EA': (1.2966, 103.7764),
+            'EB': (1.2966, 103.7764),
+            'EC': (1.2966, 103.7764),
+            'ED': (1.2966, 103.7764),
+            'EE': (1.2966, 103.7764),
+            'EF': (1.2966, 103.7764),
+            'EG': (1.2966, 103.7764),
+            'EH': (1.2966, 103.7764),
+            'EI': (1.2966, 103.7764),
+            'EJ': (1.2966, 103.7764),
+            'EK': (1.2966, 103.7764),
+            'EL': (1.2966, 103.7764),
+            'EM': (1.2966, 103.7764),
+            'EN': (1.2966, 103.7764),
+            'EO': (1.2966, 103.7764),
+            'EP': (1.2966, 103.7764),
+            'EQ': (1.2966, 103.7764),
+            'ER': (1.2966, 103.7764),
+            'ES': (1.2966, 103.7764),
+            'ET': (1.2966, 103.7764),
+            'EU': (1.2966, 103.7764),
+            'EV': (1.2966, 103.7764),
+            'EW': (1.2966, 103.7764),
+            'EX': (1.2966, 103.7764),
+            'EY': (1.2966, 103.7764),
+            'EZ': (1.2966, 103.7764),
+            
+            # Science Faculty (Kent Ridge Campus)
+            'S1': (1.2966, 103.7764),
+            'S2': (1.2966, 103.7764),
+            'S3': (1.2966, 103.7764),
+            'S4': (1.2966, 103.7764),
+            'S5': (1.2966, 103.7764),
+            'SA': (1.2966, 103.7764),
+            'SB': (1.2966, 103.7764),
+            'SC': (1.2966, 103.7764),
+            'SD': (1.2966, 103.7764),
+            'SE': (1.2966, 103.7764),
+            'SF': (1.2966, 103.7764),
+            'SG': (1.2966, 103.7764),
+            'SH': (1.2966, 103.7764),
+            'SI': (1.2966, 103.7764),
+            'SJ': (1.2966, 103.7764),
+            'SK': (1.2966, 103.7764),
+            'SL': (1.2966, 103.7764),
+            'SM': (1.2966, 103.7764),
+            'SN': (1.2966, 103.7764),
+            'SO': (1.2966, 103.7764),
+            'SP': (1.2966, 103.7764),
+            'SQ': (1.2966, 103.7764),
+            'SR': (1.2966, 103.7764),
+            'SS': (1.2966, 103.7764),
+            'ST': (1.2966, 103.7764),
+            'SU': (1.2966, 103.7764),
+            'SV': (1.2966, 103.7764),
+            'SW': (1.2966, 103.7764),
+            'SX': (1.2966, 103.7764),
+            'SY': (1.2966, 103.7764),
+            'SZ': (1.2966, 103.7764),
+            
+            # Arts & Social Sciences (Kent Ridge Campus)
+            'AS1': (1.2966, 103.7764),
+            'AS2': (1.2966, 103.7764),
+            'AS3': (1.2966, 103.7764),
+            'AS4': (1.2966, 103.7764),
+            'AS5': (1.2966, 103.7764),
+            'AS6': (1.2966, 103.7764),
+            'AS7': (1.2966, 103.7764),
+            'AS8': (1.2966, 103.7764),
+            
+            # Business School (Kent Ridge Campus)
+            'BIZ1': (1.2966, 103.7764),
+            'BIZ2': (1.2966, 103.7764),
+            'BIZ3': (1.2966, 103.7764),
+            'BIZ4': (1.2966, 103.7764),
+            'BIZ5': (1.2966, 103.7764),
+            'BIZ6': (1.2966, 103.7764),
+            'BIZ7': (1.2966, 103.7764),
+            'BIZ8': (1.2966, 103.7764),
+            
+            # Computing (Kent Ridge Campus)
+            'COM1': (1.2966, 103.7764),
+            'COM2': (1.2966, 103.7764),
+            'COM3': (1.2966, 103.7764),
+            'COM4': (1.2966, 103.7764),
+            'COM5': (1.2966, 103.7764),
+            'COM6': (1.2966, 103.7764),
+            'COM7': (1.2966, 103.7764),
+            'COM8': (1.2966, 103.7764),
+            
+            # Design & Environment (Kent Ridge Campus)
+            'DE1': (1.2966, 103.7764),
+            'DE2': (1.2966, 103.7764),
+            'DE3': (1.2966, 103.7764),
+            'DE4': (1.2966, 103.7764),
+            'DE5': (1.2966, 103.7764),
+            'DE6': (1.2966, 103.7764),
+            'DE7': (1.2966, 103.7764),
+            'DE8': (1.2966, 103.7764),
+            
+            # Medicine (Kent Ridge Campus)
+            'MD1': (1.2966, 103.7764),
+            'MD2': (1.2966, 103.7764),
+            'MD3': (1.2966, 103.7764),
+            'MD4': (1.2966, 103.7764),
+            'MD5': (1.2966, 103.7764),
+            'MD6': (1.2966, 103.7764),
+            'MD7': (1.2966, 103.7764),
+            'MD8': (1.2966, 103.7764),
+            
+            # Law (Kent Ridge Campus)
+            'LAW1': (1.2966, 103.7764),
+            'LAW2': (1.2966, 103.7764),
+            'LAW3': (1.2966, 103.7764),
+            'LAW4': (1.2966, 103.7764),
+            'LAW5': (1.2966, 103.7764),
+            'LAW6': (1.2966, 103.7764),
+            'LAW7': (1.2966, 103.7764),
+            'LAW8': (1.2966, 103.7764),
+            
+            # Default coordinates for unknown venues (Kent Ridge Campus)
+            'UNKNOWN': (1.2966, 103.7764)
+        }
+    
+    def _get_venue_coordinates(self, venue: str) -> Tuple[float, float]:
+        """Get coordinates for a venue, with fallback for unknown venues"""
+        # Extract building code from venue string
+        venue_code = venue.split()[0] if venue else 'UNKNOWN'
+        
+        # Try exact match first
+        if venue_code in self.venue_coordinates:
+            return self.venue_coordinates[venue_code]
+        
+        # Try partial matches for common patterns
+        for known_venue, coords in self.venue_coordinates.items():
+            if venue_code.startswith(known_venue) or known_venue.startswith(venue_code):
+                return coords
+        
+        # Default fallback
+        return self.venue_coordinates['UNKNOWN']
+    
+    def _calculate_distance(self, venue1: str, venue2: str) -> float:
+        """Calculate walking distance between two venues using Haversine formula"""
+        if venue1 == venue2:
+            return 0.0
+        
+        coord1 = self._get_venue_coordinates(venue1)
+        coord2 = self._get_venue_coordinates(venue2)
+        
+        import math
+        
+        lat1, lon1 = coord1
+        lat2, lon2 = coord2
+        
+        # convert to radianss
+        lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+        
+        # haversine formula
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        c = 2 * math.asin(math.sqrt(a))
+        
+        r = 6371
+        
+        distance_km = c * r
+        return distance_km * 1000  
     
     def _get_exam_interval_for_module(self, module_code: str) -> Optional[Tuple[datetime, datetime]]:
         """
@@ -270,6 +448,11 @@ class TimetableOptimizer:
             lunch_penalty = self._add_lunch_break_constraint(model, all_selected_lessons)
             if lunch_penalty is not None:
                 objective_terms.append(lunch_penalty)
+        
+        if self.preferences.get('minimizeTravel'):
+            travel_penalty = self._add_minimize_travel_constraint(model, all_selected_lessons)
+            if travel_penalty is not None:
+                objective_terms.append(travel_penalty)
         
         if objective_terms:
             model.Minimize(sum(objective_terms))
@@ -478,6 +661,44 @@ class TimetableOptimizer:
             return penalty
         return None
     
+    def _add_minimize_travel_constraint(self, model, all_selected_lessons):
+        """Penalize schedules that require significant travel between venues"""
+        # Group lessons by day to calculate travel distances
+        daily_lessons = defaultdict(list)
+        for var, session, module, lesson_type, class_no in all_selected_lessons:
+            daily_lessons[session['day']].append((var, session))
+        
+        travel_penalties = []
+        
+        for day, lessons in daily_lessons.items():
+            if len(lessons) < 2:
+                continue  # No travel needed for single lesson days
+            
+            # Calculate travel distances between consecutive lessons
+            for i in range(len(lessons) - 1):
+                var1, session1 = lessons[i]
+                var2, session2 = lessons[i + 1]
+                
+                # Only penalize if both lessons are selected
+                venue1 = session1['venue']
+                venue2 = session2['venue']
+                distance = self._calculate_distance(venue1, venue2)
+                
+                # Create penalty variable for this travel segment
+                # Scale penalty based on distance (penalty increases with distance)
+                max_penalty = int(distance / 100)  # 1 penalty point per 100m
+                travel_penalty = model.NewIntVar(0, max_penalty, f'travel_{day}_{i}')
+                
+                # If both lessons are selected, apply the penalty
+                model.Add(travel_penalty >= (var1 + var2 - 1) * max_penalty)
+                travel_penalties.append(travel_penalty)
+        
+        if travel_penalties:
+            total_penalty = model.NewIntVar(0, sum(p.Proto().domain[1] for p in travel_penalties), 'total_travel_penalty')
+            model.Add(total_penalty == sum(travel_penalties))
+            return total_penalty
+        return None
+    
     def _format_solutions(self, raw_solutions: List[Dict]) -> List[Dict]:
         """Format solutions into readable timetables"""
         formatted = []
@@ -526,7 +747,41 @@ class TimetableOptimizer:
             lunch_conflicts = self._get_lunch_conflicts(schedule)
             score -= len(lunch_conflicts) * 8
         
+        if self.preferences.get('minimizeTravel'):
+            total_travel_distance = self._calculate_total_travel_distance(schedule)
+            # Deduct 1 point per 100m of travel distance
+            travel_penalty = int(total_travel_distance / 100)
+            score -= travel_penalty
+        
         return max(0, score)
+    
+    def _calculate_total_travel_distance(self, schedule: List[Dict]) -> float:
+        """Calculate total travel distance for a schedule"""
+        if len(schedule) < 2:
+            return 0.0
+        
+        # Group lessons by day
+        daily_lessons = defaultdict(list)
+        for slot in schedule:
+            daily_lessons[slot['day']].append(slot)
+        
+        total_distance = 0.0
+        
+        for day, lessons in daily_lessons.items():
+            if len(lessons) < 2:
+                continue
+            
+            # Sort lessons by time
+            lessons.sort(key=lambda x: x['startTime'])
+            
+            # Calculate distance between consecutive lessons
+            for i in range(len(lessons) - 1):
+                venue1 = lessons[i]['venue']
+                venue2 = lessons[i + 1]['venue']
+                distance = self._calculate_distance(venue1, venue2)
+                total_distance += distance
+        
+        return total_distance
     
     def _generate_tradeoffs(self, schedule: List[Dict]) -> List[str]:
         """Generate human-readable tradeoff explanations"""
@@ -552,6 +807,15 @@ class TimetableOptimizer:
                 tradeoffs.append('✓ Lunch breaks (12-2pm) preserved on all days')
             else:
                 tradeoffs.append(f'⚠ Lunch conflicts on: {", ".join(lunch_conflicts)}')
+        
+        if self.preferences.get('minimizeTravel'):
+            total_travel_distance = self._calculate_total_travel_distance(schedule)
+            if total_travel_distance < 100:  # Less than 100m total travel
+                tradeoffs.append('✓ Minimal travel between venues')
+            elif total_travel_distance < 500:  # Less than 500m total travel
+                tradeoffs.append(f'⚠ Moderate travel: {total_travel_distance:.0f}m between venues')
+            else:  # More than 500m total travel
+                tradeoffs.append(f'⚠ High travel: {total_travel_distance:.0f}m between venues')
         
         days_with_classes = set(s['day'] for s in schedule)
         tradeoffs.append(f'📅 Classes spread across {len(days_with_classes)} day(s)')
